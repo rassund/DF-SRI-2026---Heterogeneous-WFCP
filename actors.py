@@ -2,11 +2,12 @@ import numpy as np
 from utils import score_func
 
 class Client:
-    def __init__(self, images, labels, model, num_bins):
+    def __init__(self, data, model, num_bins):
         """
         model: callable returning p(y|x) \\
         num_bins: M
         """
+        (images, labels) = data
         self.softmax_dists = model.predict(images)
         self.noncon_scores = []
         for i in range(len(labels)):
@@ -43,18 +44,22 @@ class Server:
         q_level = int(np.ceil((n + 1) * (1 - alpha)))
         return np.quantile(self.noncon_scores, q_level / n, method = 'higher')
     
-    def predict_set(self, alpha, image, labels):
-        """ Compute and return the prediction set """
-        pred_set = []
+    def pred_sets(self, alpha, data):
+        """ Compute and return the prediction sets for all images in data """
+        pred_sets = []
+        (images, labels) = data
 
         threshold = self.threshold(alpha)
-        softmax_dist = self.model.predict(image)
-        for label in range(len(labels)):
-            noncon_score = score_func(softmax_dist, label)
-            if (noncon_score <= threshold):
-                pred_set.append(labels[label])
+        softmax_dist = self.model.predict(images)
+        for image in softmax_dist:
+            pred_set = []
+            for i in range(len(labels)):
+                noncon_score = score_func(image, i)
+                if (noncon_score <= threshold):
+                    pred_set.append(labels[i])
+            pred_sets.append(pred_set)
 
-        return pred_set
+        return pred_sets
 
 
 class Channel:

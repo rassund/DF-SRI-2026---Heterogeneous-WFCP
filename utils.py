@@ -1,7 +1,6 @@
-def split_data(images, labels):
-    data = [images, labels]
+def split_data(data):
     data_split = [data]
     return data_split
 
-def score_func(softmax_dist, label):
-    return 1.0 - softmax_dist[label]
+def score_func(softmax, label):
+    return 1.0 - softmax[label]

@@ -9,7 +9,7 @@ class Client:
         """
         images = np.array([d[0] for d in data])
         labels = np.array([d[1] for d in data])
-        self.softmax_dists = model.predict(images)
+        self.softmax_dists = model.predict(images, verbose=False)
         self.noncon_scores = []
         for i in range(len(labels)):
             self.noncon_scores.append(self.noncon_score(self.softmax_dists[i], labels[i]))
@@ -50,7 +50,7 @@ class Server:
         pred_sets = []
 
         threshold = self.threshold(alpha)
-        softmax_dist = self.model.predict(images)
+        softmax_dist = self.model.predict(images, verbose=False)
         print()
         for image in softmax_dist:
             pred_set = []

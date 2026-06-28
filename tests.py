@@ -14,6 +14,8 @@ def marginal_coverage(model, data, num_clients, split_data, alpha, num_trials, n
     is achieved if the mean coverage over all trials is roughly equal to 1 - alpha.
     """
     coverages = np.zeros((num_trials,))
+    all_pred_set_sizes = []
+
     for r in range(num_trials):
         channel = Channel()
         server = Server(model)
@@ -25,9 +27,17 @@ def marginal_coverage(model, data, num_clients, split_data, alpha, num_trials, n
             client.transmit(channel)
         
         server.aggregate_data(channel)
+
         val_images = np.array([d[0] for d in val_data])
         val_labels = np.array([d[1] for d in val_data])
+
         pred_sets = server.pred_sets(alpha, val_images)
+
+        # Measure sizes
+        pred_set_sizes = [len(s) for s in pred_sets]
+        all_pred_set_sizes.extend(pred_set_sizes)
+
+        # Calculate coverage
         n = len(val_labels)
         k = 0
         for i in range(n):
@@ -35,5 +45,20 @@ def marginal_coverage(model, data, num_clients, split_data, alpha, num_trials, n
                 k += 1
         coverages[r] = k / n
     
+    # Coverage result
     print(f"Coverage: {coverages.mean()}")
-    plt.hist(coverages)
+    plt.figure()
+    plt.hist(coverages, bins=10)
+    plt.xlabel("Coverage")
+    plt.ylabel("Frequency")
+    plt.title("Marginal Coverage over trials")
+    plt.show()
+
+    # Efficiency / adaptivity result
+    print(f"Average prediction set size: {np.mean(all_pred_set_sizes)}")
+    plt.figure()
+    plt.hist(all_pred_set_sizes, bins=range(1, len(cifar10_labels)))
+    plt.xlabel("Prediction set size")
+    plt.ylabel("Frequency")
+    plt.title("Prediction set size distribution")
+    plt.show()

@@ -20,7 +20,7 @@ class Client:
         self.M = num_bins
 
         self.quantized_scores = np.array([
-            self.quantize(s)
+            self.quantize(s[0])
             for s in self.noncon_scores
         ])
 
@@ -47,31 +47,48 @@ class Client:
 
 
 class Server:
-    def __init__(self, model):
+    def __init__(self, model, num_bins):
         self.model = model
+        self.M = num_bins
+        self.histogram = None
     
     def aggregate_data(self, channel):
         """ Aggregate all data currently in the channel """
-        self.noncon_scores = channel.receive()
+        self.histogram = channel.receive()
+        self.histogram = np.maximum(self.histogram, 0)
+        self.histogram /= np.sum(self.histogram)
     
     def threshold(self, alpha):
         """ Calculate and return the threshold based on the nonconformity scores and the alpha """
-        n = len(self.noncon_scores)
-        q_level = int(np.ceil((n + 1) * (1 - alpha)))
-        return np.quantile(self.noncon_scores, q_level / n, method = 'higher')
+        #n = len(self.noncon_scores)
+        #q_level = int(np.ceil((n + 1) * (1 - alpha)))
+        #return np.quantile(self.noncon_scores, q_level / n, method = 'higher')
+
+        cumulative = np.cumsum(self.histogram)
+
+        bin_idx = np.searchsorted(cumulative, 1-alpha)
+
+        lower_mass = (cumulative[bin_idx-1] if bin_idx > 0 else 0)
+        bin_fraction = ((1-alpha - lower_mass) / self.histogram[bin_idx])
+
+        bin_width = 1.0 / self.M
+
+        threshold = (bin_idx + bin_fraction) * bin_width
+        return min(threshold, 1.0)
     
     def pred_sets(self, alpha, images):
         """ Compute and return the prediction sets for all images """
         pred_sets = []
 
         threshold = self.threshold(alpha)
+
         softmax_dist = self.model.predict(images, verbose=False)
-        print()
-        for image in softmax_dist:
+
+        for probs in softmax_dist:
             pred_set = []
             for i in range(len(cifar10_labels)):
-                noncon_score = score_func(image, i)
-                if (noncon_score <= threshold):
+                score = score_func(probs, i)
+                if (score <= threshold):
                     pred_set.append(cifar10_labels[i])
             pred_sets.append(pred_set)
 
@@ -95,7 +112,7 @@ class Channel:
         for x in self.data:
             received += h * x
         
-        received = self.apply_noise(received)
+        #received = self.apply_noise(received)
 
         self.data = []
 

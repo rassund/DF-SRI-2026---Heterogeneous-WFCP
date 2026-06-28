@@ -18,12 +18,12 @@ def marginal_coverage(model, data, num_clients, split_data, alpha, num_trials, n
 
     for r in range(num_trials):
         channel = Channel()
-        server = Server(model)
+        server = Server(model, 5)
         np.random.shuffle(data)
         calib_data, val_data = (data[:num_calib_data], data[num_calib_data:])
-        calib_data_split = split_data(calib_data)
+        calib_data_split = split_data(calib_data, num_clients)
         for k in range(num_clients):
-            client = Client(calib_data_split[k], model, 1)
+            client = Client(calib_data_split[k], model, 5)
             client.transmit(channel)
         
         server.aggregate_data(channel)
@@ -57,7 +57,7 @@ def marginal_coverage(model, data, num_clients, split_data, alpha, num_trials, n
     # Efficiency / adaptivity result
     print(f"Average prediction set size: {np.mean(all_pred_set_sizes)}")
     plt.figure()
-    plt.hist(all_pred_set_sizes, bins=range(1, len(cifar10_labels)))
+    plt.hist(all_pred_set_sizes, bins=range(1, len(cifar10_labels)+1))
     plt.xlabel("Prediction set size")
     plt.ylabel("Frequency")
     plt.title("Prediction set size distribution")

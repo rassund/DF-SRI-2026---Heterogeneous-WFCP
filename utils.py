@@ -14,7 +14,7 @@ def split_data_homo(data, num_groups):
     label_groups = defaultdict(list)
     
     for image, label in data:
-        label_groups[label].append((image, label))
+        label_groups[label[0]].append((image, label))
     
     for label in label_groups:
         random.shuffle(label_groups[label])

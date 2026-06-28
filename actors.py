@@ -9,26 +9,41 @@ class Client:
         """
         images = np.array([d[0] for d in data])
         labels = np.array([d[1] for d in data])
+
         self.softmax_dists = model.predict(images, verbose=False)
-        self.noncon_scores = []
-        for i in range(len(labels)):
-            self.noncon_scores.append(self.noncon_score(self.softmax_dists[i], labels[i]))
+
+        self.noncon_scores = np.array([
+            self.noncon_score(self.softmax_dists[i], labels[i])
+            for i in range(len(labels))
+        ])
 
         self.M = num_bins
+
+        self.quantized_scores = np.array([
+            self.quantize(s)
+            for s in self.noncon_scores
+        ])
+
+        self.compute_histogram()
     
     def noncon_score(self, softmax_dist, label):
         """ Compute nonconformity score: s(x,y) = 1 - p(y|x) """
         return score_func(softmax_dist, label)
     
-    def quantize(self, s):
+    def quantize(self, score):
         """ Uniform quantization into M bins """
+        bin_width = 1.0 / self.M
+        bin_idx = int(np.floor(score / bin_width))
+        return min(bin_idx, self.M - 1)
     
     def compute_histogram(self):
         """ Compute local histogram p_k """
+        counts = np.bincount(self.quantized_scores, minlength=self.M)
+        self.histogram = counts / len(self.quantized_scores)
     
     def transmit(self, channel):
         """ Transmit the histogram of this client into the channel """
-        channel.transmit(self.noncon_scores)
+        channel.transmit(self.histogram)
 
 
 class Server:

@@ -1,5 +1,5 @@
 import numpy as np
-from utils import score_func
+from utils import score_func, cifar10_labels
 
 class Client:
     def __init__(self, data, model, num_bins):
@@ -7,7 +7,8 @@ class Client:
         model: callable returning p(y|x) \\
         num_bins: M
         """
-        (images, labels) = data
+        images = np.array([d[0] for d in data])
+        labels = np.array([d[1] for d in data])
         self.softmax_dists = model.predict(images)
         self.noncon_scores = []
         for i in range(len(labels)):
@@ -36,7 +37,7 @@ class Server:
     
     def aggregate_data(self, channel):
         """ Aggregate all data currently in the channel """
-        self.noncon_scores = channel.flush()
+        self.noncon_scores = channel.flush()[0]
     
     def threshold(self, alpha):
         """ Calculate and return the threshold based on the nonconformity scores and the alpha """
@@ -44,25 +45,28 @@ class Server:
         q_level = int(np.ceil((n + 1) * (1 - alpha)))
         return np.quantile(self.noncon_scores, q_level / n, method = 'higher')
     
-    def pred_sets(self, alpha, data):
-        """ Compute and return the prediction sets for all images in data """
+    def pred_sets(self, alpha, images):
+        """ Compute and return the prediction sets for all images """
         pred_sets = []
-        (images, labels) = data
 
         threshold = self.threshold(alpha)
         softmax_dist = self.model.predict(images)
+        print()
         for image in softmax_dist:
             pred_set = []
-            for i in range(len(labels)):
+            for i in range(len(cifar10_labels)):
                 noncon_score = score_func(image, i)
                 if (noncon_score <= threshold):
-                    pred_set.append(labels[i])
+                    pred_set.append(cifar10_labels[i])
             pred_sets.append(pred_set)
 
         return pred_sets
 
 
 class Channel:
+    def __init__(self):
+        self.data = []
+    
     def apply_noise():
         """ Apply noise to all data currently in the channel """
     

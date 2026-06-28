@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from actors import Client, Server, Channel
+from utils import cifar10_labels
 
 def marginal_coverage(model, data, num_clients, split_data, alpha, num_trials, num_calib_data):
     """
@@ -15,7 +16,7 @@ def marginal_coverage(model, data, num_clients, split_data, alpha, num_trials, n
     coverages = np.zeros((num_trials,))
     for r in range(num_trials):
         channel = Channel()
-        server = Server()
+        server = Server(model)
         np.random.shuffle(data)
         calib_data, val_data = (data[:num_calib_data], data[num_calib_data:])
         calib_data_split = split_data(calib_data)
@@ -24,14 +25,15 @@ def marginal_coverage(model, data, num_clients, split_data, alpha, num_trials, n
             client.transmit(channel)
         
         server.aggregate_data(channel)
-        pred_sets = server.pred_sets(alpha)
-        (_, val_labels) = val_data
+        val_images = np.array([d[0] for d in val_data])
+        val_labels = np.array([d[1] for d in val_data])
+        pred_sets = server.pred_sets(alpha, val_images)
         n = len(val_labels)
         k = 0
-        for i in n:
-            if val_labels[i] in pred_sets[i]:
+        for i in range(n):
+            if cifar10_labels[val_labels[i][0]] in pred_sets[i]:
                 k += 1
         coverages[r] = k / n
     
-    print("Coverage: " + coverages.mean())
+    print(f"Coverage: {coverages.mean()}")
     plt.hist(coverages)

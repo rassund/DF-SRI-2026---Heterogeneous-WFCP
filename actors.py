@@ -52,7 +52,7 @@ class Server:
     
     def aggregate_data(self, channel):
         """ Aggregate all data currently in the channel """
-        self.noncon_scores = channel.flush()[0]
+        self.noncon_scores = channel.receive()
     
     def threshold(self, alpha):
         """ Calculate and return the threshold based on the nonconformity scores and the alpha """
@@ -82,13 +82,21 @@ class Channel:
     def __init__(self):
         self.data = []
     
-    def apply_noise():
+    def apply_noise(data):
         """ Apply noise to all data currently in the channel """
+        return data
     
     def transmit(self, data):
-        self.data.append(data)
+        self.data.append(np.array(data))
     
-    def flush(self):
-        data = self.data
+    def receive(self):
+        received = np.zeros_like(self.data[0])
+        h = 1.0 # Fading coefficient
+        for x in self.data:
+            received += h * x
+        
+        received = self.apply_noise(received)
+
         self.data = []
-        return data
+
+        return received

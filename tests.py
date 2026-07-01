@@ -19,6 +19,7 @@ def marginal_coverage(model, data, num_clients, split_data, alpha, num_trials, n
     for r in range(num_trials):
         channel = Channel()
         server = Server(model, 5)
+        
         np.random.shuffle(data)
         calib_data, val_data = (data[:num_calib_data], data[num_calib_data:])
         calib_data_split = split_data(calib_data, num_clients)
@@ -62,3 +63,28 @@ def marginal_coverage(model, data, num_clients, split_data, alpha, num_trials, n
     plt.ylabel("Frequency")
     plt.title("Prediction set size distribution")
     plt.show()
+
+def histogram_test(model, data, split_data):
+    client_histograms = []
+
+    channel = Channel()
+    server = Server(model, 5)
+
+    np.random.shuffle(data)
+    calib_data = data[:1000]
+    calib_data_split = split_data(calib_data, 10)
+
+    for i in range(10):
+        client = Client(calib_data_split[i], model, 5)
+        client_histograms.append(client.get_histogram())
+        client.transmit(channel)
+    
+    server.aggregate_data(channel)
+
+    true_histogram = np.mean(client_histograms, axis=0)
+    estimated_histogram = server.get_histogram()
+
+    print("True histogram:")
+    print(true_histogram)
+    print("Estimated histogram:")
+    print(estimated_histogram)

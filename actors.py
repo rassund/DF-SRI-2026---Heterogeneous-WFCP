@@ -41,9 +41,16 @@ class Client:
         counts = np.bincount(self.quantized_scores, minlength=self.M)
         self.histogram = counts / len(self.quantized_scores)
     
+    def tbma_encode(self, histogram):
+        """ Encodes the local histogram into a TBMA signal """
+        return np.sqrt(histogram)
+    
     def transmit(self, channel):
-        """ Transmit the histogram of this client into the channel """
-        channel.transmit(self.histogram)
+        """ Convert this clients histogram into a TBMA signal and transmit it into the channel """
+        channel.transmit(self.tbma_encode(self.histogram))
+    
+    def get_histogram(self):
+        return self.histogram
 
 
 class Server:
@@ -54,13 +61,13 @@ class Server:
     
     def aggregate_data(self, channel):
         """ Aggregate all data currently in the channel """
-        self.histogram = channel.receive()
-        self.histogram = np.maximum(self.histogram, 0)
-        self.histogram /= np.sum(self.histogram)
+        data = channel.receive()
+        histogram = data ** 2
+        self.histogram = histogram / np.sum(histogram)
     
     def threshold(self, alpha):
         """ Calculate and return the threshold based on the nonconformity scores and the alpha """
-        #n = len(self.noncon_scores)
+        #n = len(self.noncon_scores) CENTRALIZED THRESHOLD COMPUTATION
         #q_level = int(np.ceil((n + 1) * (1 - alpha)))
         #return np.quantile(self.noncon_scores, q_level / n, method = 'higher')
 
@@ -93,6 +100,9 @@ class Server:
             pred_sets.append(pred_set)
 
         return pred_sets
+    
+    def get_histogram(self):
+        return self.histogram
 
 
 class Channel:
@@ -104,16 +114,16 @@ class Channel:
         return data
     
     def transmit(self, data):
-        self.data.append(np.array(data))
+        self.data.append(data)
     
     def receive(self):
-        received = np.zeros_like(self.data[0])
-        h = 1.0 # Fading coefficient
-        for x in self.data:
-            received += h * x
+        aggregate_data = np.sum(self.data, axis=0)
+        #h = 1.0 # Fading coefficient
+        #for x in self.data:
+        #    received += h * x
         
         #received = self.apply_noise(received)
 
         self.data = []
 
-        return received
+        return aggregate_data

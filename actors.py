@@ -4,7 +4,7 @@ from utils import score_func, cifar10_labels
 class Client:
     def __init__(self, data, model, num_bins, codebook):
         """
-        model: callable returning p(y|x) \\
+        model: the predictive model p(y|x) \\
         num_bins: M
         """
         images = np.array([d[0] for d in data])
@@ -112,23 +112,33 @@ class Server:
 
 
 class Channel:
-    def __init__(self):
+    def __init__(self, snr=20):
+        """
+        snr: signal-to-noise ratio
+        """
         self.data = []
+        self.snr = snr
     
-    def apply_noise(data):
+    def apply_noise(self, data, type):
         """ Apply noise to all data currently in the channel """
+        if type == "Gaussian":
+            signal_power = np.mean(data ** 2)
+            noise_power = signal_power / self.snr
+            noise = np.random.normal(0, np.sqrt(noise_power), size = data.shape)
+            data += noise
+        
         return data
     
     def transmit(self, data):
         self.data.append(data)
     
     def receive(self):
-        aggregate_data = np.sum(self.data, axis=0)
-        #h = 1.0 # Fading coefficient
-        #for x in self.data:
-        #    received += h * x
+        aggregate_data = np.zeros_like(self.data[0])
+        for x in self.data:
+            h = np.random.rayleigh() # Channel fading
+            aggregate_data += h * x
         
-        #received = self.apply_noise(received)
+        aggregate_data = self.apply_noise(aggregate_data, "Gaussian")
 
         self.data = []
 

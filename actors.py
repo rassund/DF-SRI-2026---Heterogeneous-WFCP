@@ -2,7 +2,7 @@ import numpy as np
 from utils import score_func, cifar10_labels
 
 class Client:
-    def __init__(self, data, model, num_bins):
+    def __init__(self, data, model, num_bins, codebook):
         """
         model: callable returning p(y|x) \\
         num_bins: M
@@ -18,6 +18,7 @@ class Client:
         ])
 
         self.M = num_bins
+        self.codebook = codebook
 
         self.quantized_scores = np.array([
             self.quantize(s[0])
@@ -43,7 +44,7 @@ class Client:
     
     def tbma_encode(self, histogram):
         """ Encodes the local histogram into a TBMA signal """
-        return np.sqrt(histogram)
+        return self.codebook @ np.sqrt(histogram)
     
     def transmit(self, channel):
         """ Convert this clients histogram into a TBMA signal and transmit it into the channel """
@@ -54,16 +55,21 @@ class Client:
 
 
 class Server:
-    def __init__(self, model, num_bins):
+    def __init__(self, model, num_bins, codebook):
         self.model = model
         self.M = num_bins
+        self.codebook = codebook
         self.histogram = None
     
     def aggregate_data(self, channel):
         """ Aggregate all data currently in the channel """
         data = channel.receive()
-        histogram = data ** 2
-        self.histogram = histogram / np.sum(histogram)
+        self.histogram = self.tbma_decode(data)
+    
+    def tbma_decode(self, data):
+        """ Estimate a histogram from the TBMA signal """
+        bin_energy = (self.codebook.T @ data) ** 2
+        return bin_energy / np.sum(bin_energy)
     
     def threshold(self, alpha):
         """ Calculate and return the threshold based on the nonconformity scores and the alpha """

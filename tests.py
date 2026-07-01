@@ -15,16 +15,17 @@ def marginal_coverage(model, data, num_clients, split_data, alpha, num_trials, n
     """
     coverages = np.zeros((num_trials,))
     all_pred_set_sizes = []
+    codebook = np.eye(5)
 
     for r in range(num_trials):
         channel = Channel()
-        server = Server(model, 5)
+        server = Server(model, 5, codebook)
         
         np.random.shuffle(data)
         calib_data, val_data = (data[:num_calib_data], data[num_calib_data:])
         calib_data_split = split_data(calib_data, num_clients)
         for k in range(num_clients):
-            client = Client(calib_data_split[k], model, 5)
+            client = Client(calib_data_split[k], model, 5, codebook)
             client.transmit(channel)
         
         server.aggregate_data(channel)
@@ -67,15 +68,17 @@ def marginal_coverage(model, data, num_clients, split_data, alpha, num_trials, n
 def histogram_test(model, data, split_data):
     client_histograms = []
 
+    codebook = np.eye(5)
+
     channel = Channel()
-    server = Server(model, 5)
+    server = Server(model, 5, codebook)
 
     np.random.shuffle(data)
     calib_data = data[:1000]
     calib_data_split = split_data(calib_data, 10)
 
     for i in range(10):
-        client = Client(calib_data_split[i], model, 5)
+        client = Client(calib_data_split[i], model, 5, codebook)
         client_histograms.append(client.get_histogram())
         client.transmit(channel)
     

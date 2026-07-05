@@ -2,7 +2,7 @@ import numpy as np
 from utils import score_func, cifar10_labels
 
 class Client:
-    def __init__(self, data, model, num_bins, codebook):
+    def __init__(self, data, model, num_bins, codebook, gain, min_gain):
         """
         model: the predictive model p(y|x) \\
         num_bins: M
@@ -19,6 +19,9 @@ class Client:
 
         self.M = num_bins
         self.codebook = codebook
+        self.P = 1.0 # Fixed power constraint. Different SNR can be tested by varying noise ratio N_0.
+        self.h = gain
+        self.h_min = min_gain
 
         self.quantized_scores = np.array([
             self.quantize(s[0])
@@ -43,12 +46,24 @@ class Client:
         self.histogram = counts / len(self.quantized_scores)
     
     def tbma_encode(self, histogram):
-        """ Encodes the local histogram into a TBMA signal """
-        return self.codebook @ np.sqrt(histogram)
+        """
+        Encodes the local histogram into a TBMA signal
+        Based on equations 28, 31, and 35 in Federated Inference With Reliable Uncertainty Quantificiation Over Wireless Channels
+        via Conformal Prediction (2024) by Zhu et al.  
+        """
+        c, p = self.codebook, histogram
+        gamma = np.sqrt(self.M * self.P) * self.h_min
+
+        if self.h**2 < self.h_min**2:
+            gamma_k = 0
+        else:
+            gamma_k = gamma / self.h
+
+        return gamma_k * (c @ p)
     
     def transmit(self, channel):
         """ Convert this clients histogram into a TBMA signal and transmit it into the channel """
-        channel.transmit(self.tbma_encode(self.histogram))
+        channel.transmit(self.tbma_encode(self.histogram), self.h)
     
     def get_histogram(self):
         return self.histogram
@@ -67,8 +82,13 @@ class Server:
         self.histogram = self.tbma_decode(data)
     
     def tbma_decode(self, data):
-        """ Estimate a histogram from the TBMA signal """
-        bin_energy = (self.codebook.T @ data) ** 2
+        """
+        Estimate a histogram from the TBMA signal.
+        Based on equations 29 and 30 in Federated Inference With Reliable Uncertainty Quantificiation Over Wireless Channels
+        via Conformal Prediction (2024) by Zhu et al. 
+        """
+        w = self.codebook.T @ data # eq. 30
+        # r preprocessing (eq. 37)
         return bin_energy / np.sum(bin_energy)
     
     def threshold(self, alpha):
@@ -93,6 +113,7 @@ class Server:
         """ Compute and return the prediction sets for all images """
         pred_sets = []
 
+        # quantile correction to determine alpha_c
         threshold = self.threshold(alpha)
 
         softmax_dist = self.model.predict(images, verbose=False)
@@ -119,9 +140,9 @@ class Channel:
         self.data = []
         self.snr = snr
     
-    def apply_noise(self, data, type):
+    def apply_noise(self, data, noise_type): # REVISIT THIS
         """ Apply noise to all data currently in the channel """
-        if type == "Gaussian":
+        if noise_type == "Gaussian":
             signal_power = np.mean(data ** 2)
             noise_power = signal_power / self.snr
             noise = np.random.normal(0, np.sqrt(noise_power), size = data.shape)
@@ -129,13 +150,18 @@ class Channel:
         
         return data
     
-    def transmit(self, data):
-        self.data.append(data)
+    def transmit(self, data, h):
+        self.data.append({
+            "signal": data,
+            "fading": h
+        })
     
     def receive(self):
-        aggregate_data = np.zeros_like(self.data[0])
-        for x in self.data:
-            h = np.random.rayleigh() # Channel fading
+        aggregate_data = np.zeros_like(self.data[0]["signal"])
+
+        for packet in self.data:
+            h = packet["fading"]
+            x = packet["signal"]
             aggregate_data += h * x
         
         aggregate_data = self.apply_noise(aggregate_data, "Gaussian")

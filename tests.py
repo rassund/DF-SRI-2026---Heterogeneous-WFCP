@@ -18,18 +18,18 @@ def marginal_coverage(model, data, num_clients, split_data, alpha, num_trials, n
     codebook = np.eye(5) # We use the identity matrix as codebook
 
     for r in range(num_trials):
-        channel = Channel()
-        server = Server(model, 5, codebook)
-
         # Perfect CSI is assumed, thus the gains are known to the clients
         gains = np.random.rayleigh(size=num_clients)
         min_gain = 1.0
+
+        channel = Channel()
+        server = Server(model, codebook, num_calib_data, min_gain, 0.05)
         
         np.random.shuffle(data)
         calib_data, val_data = (data[:num_calib_data], data[num_calib_data:])
         calib_data_split = split_data(calib_data, num_clients)
         for k in range(num_clients):
-            client = Client(calib_data_split[k], model, 5, codebook, gains[k], min_gain)
+            client = Client(calib_data_split[k], model, codebook, gains[k], min_gain)
             client.transmit(channel)
         
         server.aggregate_data(channel)
@@ -74,18 +74,18 @@ def histogram_test(model, data, split_data):
 
     codebook = np.eye(5)
 
-    channel = Channel()
-    server = Server(model, 5, codebook)
-
     gains = np.random.rayleigh(size=10)
     min_gain = 1.0
+
+    channel = Channel()
+    server = Server(model, codebook, 1000, min_gain, 0.05)
 
     np.random.shuffle(data)
     calib_data = data[:1000]
     calib_data_split = split_data(calib_data, 10)
 
     for i in range(10):
-        client = Client(calib_data_split[i], model, 5, codebook, gains[i], min_gain)
+        client = Client(calib_data_split[i], model, codebook, gains[i], min_gain)
         client_histograms.append(client.get_histogram())
         client.transmit(channel)
     
@@ -98,3 +98,5 @@ def histogram_test(model, data, split_data):
     print(true_histogram)
     print("Estimated histogram:")
     print(estimated_histogram)
+    print("Threshold:")
+    print(server.get_threshold(0.05))

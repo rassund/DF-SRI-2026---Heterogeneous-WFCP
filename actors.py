@@ -2,11 +2,7 @@ import numpy as np
 from utils import score_func, cifar10_labels
 
 class Client:
-    def __init__(self, data, model, num_bins, codebook, gain, min_gain):
-        """
-        model: the predictive model p(y|x) \\
-        num_bins: M
-        """
+    def __init__(self, data, model, codebook, gain, min_gain):
         images = np.array([d[0] for d in data])
         labels = np.array([d[1] for d in data])
 
@@ -17,7 +13,7 @@ class Client:
             for i in range(len(labels))
         ])
 
-        self.M = num_bins
+        self.M = codebook.shape[0]
         self.codebook = codebook
         self.P = 1.0 # Fixed power constraint. Different SNR can be tested by varying noise ratio N_0.
         self.h = gain
@@ -48,8 +44,8 @@ class Client:
     def tbma_encode(self, histogram):
         """
         Encodes the local histogram into a TBMA signal
-        Based on equations 28, 31, and 35 in Federated Inference With Reliable Uncertainty Quantificiation Over Wireless Channels
-        via Conformal Prediction (2024) by Zhu et al.  
+        Based on equations 28, 31, and 35 in Federated Inference With Reliable Uncertainty Quantificiation Over
+        Wireless Channels via Conformal Prediction (2024) by Zhu et al.  
         """
         c, p = self.codebook, histogram
         gamma = np.sqrt(self.M * self.P) * self.h_min
@@ -70,44 +66,55 @@ class Client:
 
 
 class Server:
-    def __init__(self, model, num_bins, codebook):
+    def __init__(self, model, codebook, num_calib_data, min_gain, noise_ratio):
         self.model = model
-        self.M = num_bins
+        self.M = codebook.shape[0]
         self.codebook = codebook
         self.histogram = None
+        self.num_active_clients = None
+        self.num_calib_data = num_calib_data
+        self.min_gain = min_gain
+        self.P = 1.0
+        self.snr = self.P / noise_ratio
+
     
     def aggregate_data(self, channel):
         """ Aggregate all data currently in the channel """
-        data = channel.receive()
+        data, self.num_active_clients = channel.receive()
         self.histogram = self.tbma_decode(data)
     
     def tbma_decode(self, data):
         """
         Estimate a histogram from the TBMA signal.
-        Based on equations 29 and 30 in Federated Inference With Reliable Uncertainty Quantificiation Over Wireless Channels
-        via Conformal Prediction (2024) by Zhu et al. 
+        Based on equations 29, 30, and 37 in Federated Inference With Reliable Uncertainty Quantificiation Over
+        Wireless Channels via Conformal Prediction (2024) by Zhu et al. 
         """
+        k, n, p, m, h_min = self.num_active_clients, self.num_calib_data, self.P, self.M, self.min_gain
         w = self.codebook.T @ data # eq. 30
-        # r preprocessing (eq. 37)
-        return bin_energy / np.sum(bin_energy)
+        r = (n / (np.sqrt(m * p) * h_min * k * (n + 1))) * w # eq. 37
+        r[-1] += 1 / (n + 1)
+        return r
     
     def threshold(self, alpha):
-        """ Calculate and return the threshold based on the nonconformity scores and the alpha """
+        """
+        Compute and return the threshold.
+        Based on equations 38-42 in Federated Inference With Reliable Uncertainty Quantificiation Over
+        Wireless Channels via Conformal Prediction (2024) by Zhu et al.
+        """
         #n = len(self.noncon_scores) CENTRALIZED THRESHOLD COMPUTATION
         #q_level = int(np.ceil((n + 1) * (1 - alpha)))
         #return np.quantile(self.noncon_scores, q_level / n, method = 'higher')
+        m, h_min, snr, k, n_a = self.M, self.min_gain, self.snr, self.num_active_clients, self.num_calib_data
+        n_d = n_a / k
+        sigma = n_d**2 / (m * h_min**2 * snr * (n_a + 1)) # eq. 38
+        alpha_c = alpha - sigma * self.M / (4 * alpha) # eq. 42
 
-        cumulative = np.cumsum(self.histogram)
-
-        bin_idx = np.searchsorted(cumulative, 1-alpha)
-
-        lower_mass = (cumulative[bin_idx-1] if bin_idx > 0 else 0)
-        bin_fraction = ((1-alpha - lower_mass) / self.histogram[bin_idx])
-
-        bin_width = 1.0 / self.M
-
-        threshold = (bin_idx + bin_fraction) * bin_width
-        return min(threshold, 1.0)
+        cdf = np.cumsum(self.histogram) # eq. 39
+        idx = np.searchsorted(cdf, 1 - alpha_c) # eq. 40
+        idx = min(idx, m - 1)
+        
+        s = np.linspace(0, 1, m) # eq. 41
+        return s[idx]
     
     def pred_sets(self, alpha, images):
         """ Compute and return the prediction sets for all images """
@@ -130,6 +137,9 @@ class Server:
     
     def get_histogram(self):
         return self.histogram
+    
+    def get_threshold(self, alpha):
+        return self.threshold(alpha)
 
 
 class Channel:
@@ -151,10 +161,11 @@ class Channel:
         return data
     
     def transmit(self, data, h):
-        self.data.append({
-            "signal": data,
-            "fading": h
-        })
+        if h > 0:
+            self.data.append({
+                "signal": data,
+                "fading": h
+            })
     
     def receive(self):
         aggregate_data = np.zeros_like(self.data[0]["signal"])
@@ -166,6 +177,7 @@ class Channel:
         
         aggregate_data = self.apply_noise(aggregate_data, "Gaussian")
 
+        num_clients = len(self.data)
         self.data = []
 
-        return aggregate_data
+        return aggregate_data, num_clients

@@ -19,10 +19,10 @@ def marginal_coverage(model, data, num_clients, split_data, alpha, num_trials, n
 
     for r in range(num_trials):
         # Perfect CSI is assumed, thus the gains are known to the clients
-        gains = np.random.rayleigh(size=num_clients)
+        gains = np.random.rayleigh(scale=np.sqrt(0.5), size=num_clients)
         min_gain = 1.0
 
-        channel = Channel()
+        channel = Channel(0.05)
         server = Server(model, codebook, num_calib_data, min_gain, 0.05)
         
         np.random.shuffle(data)
@@ -74,10 +74,10 @@ def histogram_test(model, data, split_data):
 
     codebook = np.eye(5)
 
-    gains = np.random.rayleigh(size=10)
+    gains = np.random.rayleigh(scale=np.sqrt(0.5), size=10)
     min_gain = 1.0
 
-    channel = Channel()
+    channel = Channel(0.05)
     server = Server(model, codebook, 1000, min_gain, 0.05)
 
     np.random.shuffle(data)

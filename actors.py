@@ -143,19 +143,14 @@ class Server:
 
 
 class Channel:
-    def __init__(self, snr=20):
-        """
-        snr: signal-to-noise ratio
-        """
+    def __init__(self, noise_ratio):
         self.data = []
-        self.snr = snr
+        self.n_0 = noise_ratio
     
-    def apply_noise(self, data, noise_type): # REVISIT THIS
+    def apply_noise(self, data, noise_type):
         """ Apply noise to all data currently in the channel """
         if noise_type == "Gaussian":
-            signal_power = np.mean(data ** 2)
-            noise_power = signal_power / self.snr
-            noise = np.random.normal(0, np.sqrt(noise_power), size = data.shape)
+            noise = np.random.normal(0, np.sqrt(self.n_0), size = data.shape)
             data += noise
         
         return data

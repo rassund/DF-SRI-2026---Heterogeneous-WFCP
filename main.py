@@ -1,7 +1,7 @@
 # %%
 import tensorflow as tf
 from utils import split_data_homo
-import tests as test
+import experiments as ex
 
 model_path = "cnn_model_cifar10.keras"
 
@@ -11,6 +11,6 @@ model = tf.keras.models.load_model(model_path)
 test_images = test_images.astype("float32") / 255.0
 data = list(zip(test_images, test_labels))
 
-test.marginal_coverage(model, data, 10, split_data_homo, 0.1, 10, 1000)
-test.histogram_test(model, data, split_data_homo)
+ex.marginal_coverage(model, data, 10, split_data_homo, 0.1, 10, 1000)
+ex.histogram_test(model, data, split_data_homo)
 # %%

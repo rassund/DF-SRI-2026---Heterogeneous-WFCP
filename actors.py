@@ -134,12 +134,6 @@ class Server:
             pred_sets.append(pred_set)
 
         return pred_sets
-    
-    def get_histogram(self):
-        return self.histogram
-    
-    def get_threshold(self, alpha):
-        return self.threshold(alpha)
 
 
 class Channel:

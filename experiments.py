@@ -92,11 +92,11 @@ def histogram_test(model, data, split_data):
     server.aggregate_data(channel)
 
     true_histogram = np.mean(client_histograms, axis=0)
-    estimated_histogram = server.get_histogram()
+    estimated_histogram = server.histogram
 
     print("True histogram:")
     print(true_histogram)
     print("Estimated histogram:")
     print(estimated_histogram)
     print("Threshold:")
-    print(server.get_threshold(0.05))
+    print(server.threshold(0.05))

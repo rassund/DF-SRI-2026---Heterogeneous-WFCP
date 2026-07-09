@@ -61,3 +61,7 @@ class TestClient(unittest.TestCase):
 
             interior_point = (left + right) / 2
             self.assertEqual(client.quantize(interior_point, edges), m, f"Interior point {interior_point} is not in bin {m}.")
+    
+    def test_histogram_sum(self):
+        client = self.clients[0]
+        self.assertEqual(client.histogram.sum(), 1.0, "The sum of the client's histogram does not equal 1.")

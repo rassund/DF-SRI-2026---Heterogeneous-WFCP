@@ -19,27 +19,28 @@ class Client:
         self.h = gain
         self.h_min = min_gain
 
-        self.quantized_scores = np.array([
-            self.quantize(s[0])
+        bins = np.linspace(0, 1, self.M + 1)
+        quantized_scores = np.array([
+            self.quantize(s[0], bins)
             for s in self.noncon_scores
         ])
 
-        self.compute_histogram()
+        self.histogram = self.compute_histogram(quantized_scores)
     
     def noncon_score(self, softmax_dist, label):
         """ Compute nonconformity score: s(x,y) = 1 - p(y|x) """
         return score_func(softmax_dist, label)
     
-    def quantize(self, score):
+    def quantize(self, score, bins):
         """ Uniform quantization into M bins """
-        bin_width = 1.0 / self.M
-        bin_idx = int(np.floor(score / bin_width))
-        return min(bin_idx, self.M - 1)
+        if score < 0 or score > 1:
+            raise ValueError("Nonconformity scores must lie in [0, 1].")
+        return np.digitize(score, bins[1:], right=True)
     
-    def compute_histogram(self):
+    def compute_histogram(self, quantized_scores):
         """ Compute local histogram p_k """
-        counts = np.bincount(self.quantized_scores, minlength=self.M)
-        self.histogram = counts / len(self.quantized_scores)
+        counts = np.bincount(quantized_scores, minlength=self.M)
+        return counts / len(quantized_scores)
     
     def tbma_encode(self, histogram):
         """

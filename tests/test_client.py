@@ -33,16 +33,31 @@ class TestClient(unittest.TestCase):
     def test_quantization_boundaries(self):
         """
         Test that all quantization boundaries quantize to the correct bin.
+        Note that bin indices range from 0 to num_bins - 1.
         """
         client = self.clients[0]
         edges = np.linspace(0, 1, self.num_bins + 1)
         eps = 1e-10
 
         # Special case for the first edge
-        self.assertEqual(client.quantize(0.0), edges[1], "Score 0.0 is not quantized to the correct bin.")
+        self.assertEqual(client.quantize(0.0, edges), 0, "Score 0.0 is not quantized to the correct bin.")
 
         for i in range(1, self.num_bins):
             # On boundary
-            self.assertEqual(client.quantize(edges[i]), edges[i], f"Score {edges[i]} is not quantized to bin {edges[i]}.")
+            self.assertEqual(client.quantize(edges[i], edges), i - 1, f"Score {edges[i]} is not quantized to bin {i - 1}.")
             # Just above boundary
-            self.assertEqual(client.quantize(edges[i] + eps), edges[i + 1], f"Score {edges[i] + eps} is not quantized to bin {edges[i]}.")
+            self.assertEqual(client.quantize(edges[i] + eps, edges), i, f"Score {edges[i] + eps} is not quantized to bin {i}.")
+        
+        self.assertRaises(ValueError, client.quantize, -0.1, edges)
+        self.assertRaises(ValueError, client.quantize, 1.1, edges)
+    
+    def test_quantization_interior(self):
+        client = self.clients[0]
+        edges = np.linspace(0, 1, self.num_bins + 1)
+        
+        for m in range(self.num_bins):
+            left = edges[m]
+            right = edges[m + 1]
+
+            interior_point = (left + right) / 2
+            self.assertEqual(client.quantize(interior_point, edges), m, f"Interior point {interior_point} is not in bin {m}.")

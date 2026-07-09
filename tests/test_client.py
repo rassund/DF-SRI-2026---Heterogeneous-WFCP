@@ -65,3 +65,17 @@ class TestClient(unittest.TestCase):
     def test_histogram_sum(self):
         client = self.clients[0]
         self.assertEqual(client.histogram.sum(), 1.0, "The sum of the client's histogram does not equal 1.")
+    
+    def test_client_histogram_against_manual(self):
+        client = self.clients[0]
+        quantized_scores = client.quantized_scores
+
+        hist = np.zeros(self.num_bins)
+        for m in range(self.num_bins):
+            count = 0
+            for idx in quantized_scores:
+                if idx == m:
+                    count += 1
+            hist[m] = count / len(quantized_scores)
+        
+        np.testing.assert_array_equal(hist, client.histogram, "The client's histogram does not match the manually computed histogram.")

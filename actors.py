@@ -20,12 +20,12 @@ class Client:
         self.h_min = min_gain
 
         bins = np.linspace(0, 1, self.M + 1)
-        quantized_scores = np.array([
+        self.quantized_scores = np.array([
             self.quantize(s[0], bins)
             for s in self.noncon_scores
         ])
 
-        self.histogram = self.compute_histogram(quantized_scores)
+        self.histogram = self.compute_histogram(self.quantized_scores)
     
     def noncon_score(self, softmax_dist, label):
         """ Compute nonconformity score: s(x,y) = 1 - p(y|x) """

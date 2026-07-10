@@ -61,9 +61,6 @@ class Client:
     def transmit(self, channel):
         """ Convert this clients histogram into a TBMA signal and transmit it into the channel """
         channel.transmit(self.tbma_encode(self.histogram), self.h)
-    
-    def get_histogram(self):
-        return self.histogram
 
 
 class Server:
@@ -138,9 +135,10 @@ class Server:
 
 
 class Channel:
-    def __init__(self, noise_ratio):
+    def __init__(self, noise_ratio, noise_type="Gaussian"):
         self.data = []
         self.n_0 = noise_ratio
+        self.noise_type = noise_type
     
     def apply_noise(self, data, noise_type):
         """ Apply noise to all data currently in the channel """
@@ -165,7 +163,7 @@ class Channel:
             x = packet["signal"]
             aggregate_data += h * x
         
-        aggregate_data = self.apply_noise(aggregate_data, "Gaussian")
+        aggregate_data = self.apply_noise(aggregate_data, self.noise_type)
 
         num_clients = len(self.data)
         self.data = []

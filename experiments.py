@@ -86,7 +86,7 @@ def histogram_test(model, data, split_data):
 
     for i in range(10):
         client = Client(calib_data_split[i], model, codebook, gains[i], min_gain)
-        client_histograms.append(client.get_histogram())
+        client_histograms.append(client.histogram)
         client.transmit(channel)
     
     server.aggregate_data(channel)

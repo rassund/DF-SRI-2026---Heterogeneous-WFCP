@@ -140,11 +140,11 @@ class Channel:
         self.n_0 = noise_ratio
         self.noise_type = noise_type
     
-    def apply_noise(self, data, noise_type):
+    def apply_noise(self, data):
         """ Apply noise to all data currently in the channel """
-        if noise_type == "Gaussian":
+        if self.noise_type == "Gaussian":
             noise = np.random.normal(0, np.sqrt(self.n_0), size = data.shape)
-            data += noise
+            return data + noise
         
         return data
     
@@ -163,7 +163,7 @@ class Channel:
             x = packet["signal"]
             aggregate_data += h * x
         
-        aggregate_data = self.apply_noise(aggregate_data, self.noise_type)
+        aggregate_data = self.apply_noise(aggregate_data)
 
         num_clients = len(self.data)
         self.data = []

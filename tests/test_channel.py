@@ -39,3 +39,32 @@ class TestChannel(unittest.TestCase):
         data = np.random.rand(100)
         out = self.channel.apply_noise(data.copy())
         np.testing.assert_array_equal(out, data, err_msg="Noise is applied even though noise type is set to none.")
+    
+    def test_receive_aggregates_signal(self):
+        self.channel.noise_type = "None"
+        self.channel.data = [
+            {"signal": np.array([1., 2., 3.]), "fading": 2.0},
+            {"signal": np.array([4., 5., 6.]), "fading": 0.5},
+        ]
+
+        received, num_clients = self.channel.receive()
+
+        expected = (
+            2.0 * np.array([1., 2., 3.]) +
+            0.5 * np.array([4., 5., 6.])
+        )
+
+        np.testing.assert_array_equal(received, expected, "The channel does not aggregate the signals correctly.")
+        self.assertEqual(num_clients, 2, "The channel does not return the correct number of clients.")
+    
+    def test_receive_clears_channel(self):
+        self.channel.data = [
+            {"signal": np.ones(3), "fading": 1}
+        ]
+        self.channel.receive()
+        self.assertEqual(self.channel.data, [], "The channel does not clear its buffer after sending data through.")
+    
+    def test_receive_clients_with_no_data(self):
+        data, h = np.array([0, 0, 0]), 1.0
+        self.channel.transmit(data, h)
+        self.assertRaises(ValueError, self.channel.receive)

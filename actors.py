@@ -149,13 +149,16 @@ class Channel:
         return data
     
     def transmit(self, data, h):
-        if h > 0:
+        if np.count_nonzero(data) != 0:
             self.data.append({
                 "signal": data,
                 "fading": h
             })
     
     def receive(self):
+        if not self.data:
+            raise ValueError("Cannot receive from an empty channel.")
+
         aggregate_data = np.zeros_like(self.data[0]["signal"])
 
         for packet in self.data:

@@ -2,7 +2,8 @@ import unittest
 import numpy as np
 import tensorflow as tf
 from actors import Server
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
+from utils import cifar10_labels
 
 class TestServer(unittest.TestCase):
     @classmethod
@@ -82,9 +83,24 @@ class TestServer(unittest.TestCase):
         self.assertEqual(threshold, 1.0, "The server returns a threshold outside the final bin of the histogram.")
     
     def test_empty_prediction_set(self):
-        self.server.threshold = Mock(return_value=-1)
+        self.server.threshold = Mock(return_value = -1)
         pred = self.server.pred_sets(0.1, np.zeros((1, 32, 32, 3)))
-        self.assertEqual(pred, [[]])
+        self.assertEqual(pred, [[]], "The server returns a non-empty prediction set even though threshold < 0.")
+    
+    def test_all_labels_in_prediction_set(self):
+        self.server.threshold = Mock(return_value = 1)
+        pred = self.server.pred_sets(0.1, np.zeros((1, 32, 32, 3)))
+        self.assertEqual(pred, [cifar10_labels], "The prediciton set does not contain all labels even though threshold == 1.")
+    
+    def test_one_label_in_prediction_set(self):
+        self.server.model = Mock()
+        self.server.model.predict.return_value = np.array([[
+            0.82, 0.02, 0.02, 0.02,
+            0.02, 0.02, 0.02, 0.02,
+            0.02, 0.02]])
+        self.server.threshold = Mock(return_value = 0.2)
+        pred = self.server.pred_sets(0.1, np.zeros((1, 32, 32, 3)))
+        self.assertEqual(pred, [[cifar10_labels[0]]], "The prediction set does not contain the correct label.")
 
 
 class DummyChannel():

@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 import tensorflow as tf
 from actors import Server
+from unittest.mock import Mock, patch
 
 class TestServer(unittest.TestCase):
     @classmethod
@@ -47,6 +48,43 @@ class TestServer(unittest.TestCase):
         self.server.aggregate_data(channel)
         self.assertEqual(self.server.num_active_clients, 7, "The server does not receive the correct number of clients from the channel.")
         self.assertIsNotNone(self.server.histogram, "The server does not compute a histogram after receiving data from the channel.")
+    
+    def test_threshold_returns_valid_quantization_level(self):
+        self.server.num_active_clients = 4
+        self.server.histogram = np.array([0.1, 0.2, 0.3, 0.2, 0.2])
+        threshold = self.server.threshold(0.1)
+        valid_levels = np.linspace(0, 1, 5)
+        self.assertIn(threshold, valid_levels, "The server does not return a valid threshold.")
+    
+    def test_threshold_uniform_histogram(self):
+        self.server.num_calib_data = 20
+        self.server.min_gain = 1000
+        self.server.snr = 1.0
+        self.server.num_active_clients = 4
+        self.server.histogram = np.array([0.15, 0.25, 0.25, 0.20, 0.15])
+        threshold = self.server.threshold(0.2)
+        self.assertEqual(threshold, 0.75, "The server chooses the wrong bin from the histogram as threshold.")
+    
+    def test_threshold_monotonicity(self):
+        self.server.num_active_clients = 4
+        self.server.histogram = np.array([0.15, 0.25, 0.25, 0.20, 0.15])
+        t90 = self.server.threshold(0.10)
+        t95 = self.server.threshold(0.05)
+        self.assertGreaterEqual(t95, t90, "The server returns a larger threshold for a larger alpha.")
+    
+    def test_threshold_never_outside_histogram(self):
+        self.server.num_calib_data = 20
+        self.server.min_gain = 0.01
+        self.server.snr = 1 / 100
+        self.server.num_active_clients = 1
+        self.server.histogram = np.array([0.15, 0.25, 0.25, 0.15, 0.20])
+        threshold = self.server.threshold(0.01)
+        self.assertEqual(threshold, 1.0, "The server returns a threshold outside the final bin of the histogram.")
+    
+    def test_empty_prediction_set(self):
+        self.server.threshold = Mock(return_value=-1)
+        pred = self.server.pred_sets(0.1, np.zeros((1, 32, 32, 3)))
+        self.assertEqual(pred, [[]])
 
 
 class DummyChannel():

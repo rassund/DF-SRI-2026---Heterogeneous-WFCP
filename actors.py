@@ -104,8 +104,8 @@ class Server:
         #return np.quantile(self.noncon_scores, q_level / n, method = 'higher')
         m, h_min, snr, k, n_a = self.M, self.min_gain, self.snr, self.num_active_clients, self.num_calib_data
         n_d = n_a / k
-        sigma = n_d**2 / (m * h_min**2 * snr * (n_a + 1)) # eq. 38
-        alpha_c = alpha - sigma * self.M / (4 * alpha) # eq. 42
+        sigma2 = n_d**2 / (m * h_min**2 * snr * (n_a + 1)**2) # eq. 38
+        alpha_c = alpha - sigma2 * m / (4 * alpha) # eq. 42
 
         cdf = np.cumsum(self.histogram) # eq. 39
         idx = np.searchsorted(cdf, 1 - alpha_c) # eq. 40

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from actors import Client, Server, Channel
 from utils import cifar10_labels
 
-def marginal_coverage(model, data, num_clients, split_data, alpha, num_trials, num_calib_data):
+def marginal_coverage(model, data, num_clients, split_data, alpha, num_trials, num_calib_data, noise_ratio, num_bins):
     """
     Based on the procedure presented in A Gentle Introduction to Conformal Prediction and Distribution-Free Uncertainty
     Quantification (2022) by Anastasios et al.
@@ -15,15 +15,15 @@ def marginal_coverage(model, data, num_clients, split_data, alpha, num_trials, n
     """
     coverages = np.zeros((num_trials,))
     all_pred_set_sizes = []
-    codebook = np.eye(5) # We use the identity matrix as codebook
+    codebook = np.eye(num_bins) # We use the identity matrix as codebook
 
     for r in range(num_trials):
         # Perfect CSI is assumed, thus the gains are known to the clients
         gains = np.random.rayleigh(scale=np.sqrt(0.5), size=num_clients)
         min_gain = 1.0
 
-        channel = Channel(0.05)
-        server = Server(model, codebook, num_calib_data, min_gain, 0.05)
+        channel = Channel(noise_ratio)
+        server = Server(model, codebook, num_calib_data, min_gain, noise_ratio)
         
         np.random.shuffle(data)
         calib_data, val_data = (data[:num_calib_data], data[num_calib_data:])
@@ -69,22 +69,22 @@ def marginal_coverage(model, data, num_clients, split_data, alpha, num_trials, n
     plt.title("Prediction set size distribution")
     plt.show()
 
-def histogram_test(model, data, split_data):
+def histogram_test(model, data, split_data, num_bins, noise_ratio, num_clients, alpha):
     client_histograms = []
 
-    codebook = np.eye(5)
+    codebook = np.eye(num_bins)
 
-    gains = np.random.rayleigh(scale=np.sqrt(0.5), size=10)
+    gains = np.random.rayleigh(scale=np.sqrt(0.5), size=20)
     min_gain = 1.0
 
-    channel = Channel(0.05)
-    server = Server(model, codebook, 1000, min_gain, 0.05)
+    channel = Channel(noise_ratio)
+    server = Server(model, codebook, 1000, min_gain, noise_ratio)
 
     np.random.shuffle(data)
     calib_data = data[:1000]
-    calib_data_split = split_data(calib_data, 10)
+    calib_data_split = split_data(calib_data, num_clients)
 
-    for i in range(10):
+    for i in range(num_clients):
         client = Client(calib_data_split[i], model, codebook, gains[i], min_gain)
         client_histograms.append(client.histogram)
         client.transmit(channel)
@@ -99,4 +99,4 @@ def histogram_test(model, data, split_data):
     print("Estimated histogram:")
     print(estimated_histogram)
     print("Threshold:")
-    print(server.threshold(0.05))
+    print(server.threshold(alpha))

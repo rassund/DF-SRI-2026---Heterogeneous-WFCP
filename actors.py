@@ -6,10 +6,10 @@ class Client:
         images = np.array([d[0] for d in data])
         labels = np.array([d[1] for d in data])
 
-        self.softmax_dists = model.predict(images, verbose=False)
+        softmax_dists = model.predict(images, verbose=False)
 
         self.noncon_scores = np.array([
-            self.noncon_score(self.softmax_dists[i], labels[i])
+            self.noncon_score(softmax_dists[i], labels[i])
             for i in range(len(labels))
         ])
 
@@ -49,28 +49,28 @@ class Client:
         Wireless Channels via Conformal Prediction (2024) by Zhu et al.  
         """
         c, p = self.codebook, histogram
-        gamma = np.sqrt(self.M * self.P) * self.h_min
+        gamma = np.sqrt(self.M * self.P) * self.h_min # eq. 35
 
-        if self.h**2 < self.h_min**2:
+        if self.h**2 < self.h_min**2: # eq. 31
             gamma_k = 0
         else:
             gamma_k = gamma / self.h
 
-        return gamma_k * (c @ p)
+        return gamma_k * (c @ p) # eq. 28
     
     def transmit(self, channel):
         """ Convert this clients histogram into a TBMA signal and transmit it into the channel """
-        channel.transmit(self.tbma_encode(self.histogram), self.h)
+        channel.transmit(self.tbma_encode(self.histogram), self.h, len(self.noncon_scores))
 
 
 class Server:
-    def __init__(self, model, codebook, num_calib_data, min_gain, noise_ratio):
+    def __init__(self, model, codebook, min_gain, noise_ratio):
         self.model = model
         self.M = codebook.shape[0]
         self.codebook = codebook
         self.histogram = None
         self.num_active_clients = None
-        self.num_calib_data = num_calib_data
+        self.num_calib_data = None
         self.min_gain = min_gain
         self.P = 1.0
         self.snr = self.P / noise_ratio
@@ -78,7 +78,7 @@ class Server:
     
     def aggregate_data(self, channel):
         """ Aggregate all data currently in the channel """
-        data, self.num_active_clients = channel.receive()
+        data, self.num_active_clients, self.num_calib_data = channel.receive()
         self.histogram = self.tbma_decode(data)
     
     def tbma_decode(self, data):
@@ -87,10 +87,10 @@ class Server:
         Based on equations 29, 30, and 37 in Federated Inference With Reliable Uncertainty Quantificiation Over
         Wireless Channels via Conformal Prediction (2024) by Zhu et al. 
         """
-        k, n, p, m, h_min = self.num_active_clients, self.num_calib_data, self.P, self.M, self.min_gain
+        k, n_a, p, m, h_min = self.num_active_clients, self.num_calib_data, self.P, self.M, self.min_gain
         w = self.codebook.T @ data # eq. 30
-        r = (n / (np.sqrt(m * p) * h_min * k * (n + 1))) * w # eq. 37
-        r[-1] += 1 / (n + 1)
+        r = (n_a / (np.sqrt(m * p) * h_min * k * (n_a + 1))) * w # eq. 37
+        r[-1] += 1 / (n_a + 1)
         return r
     
     def threshold(self, alpha):
@@ -148,11 +148,12 @@ class Channel:
         
         return data
     
-    def transmit(self, data, h):
+    def transmit(self, data, h, n_d):
         if np.count_nonzero(data) != 0:
             self.data.append({
                 "signal": data,
-                "fading": h
+                "fading": h,
+                "num_calib": n_d
             })
     
     def receive(self):
@@ -160,15 +161,17 @@ class Channel:
             raise ValueError("Cannot receive from an empty channel.")
 
         aggregate_data = np.zeros_like(self.data[0]["signal"])
+        n_a = 0
 
         for packet in self.data:
             h = packet["fading"]
             x = packet["signal"]
             aggregate_data += h * x
+            n_a += packet["num_calib"]
         
         aggregate_data = self.apply_noise(aggregate_data)
 
         num_clients = len(self.data)
         self.data = []
 
-        return aggregate_data, num_clients
+        return aggregate_data, num_clients, n_a

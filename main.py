@@ -22,5 +22,5 @@ num_clients = 20
 alpha = 0.2
 
 ex.marginal_coverage(model, data, num_clients, split_data_homo, alpha, 10, 1000, n_0[8], num_bins)
-ex.histogram_test(model, data, split_data_homo, num_bins, n_0[8], num_clients, alpha)
+#ex.histogram_test(model, data, split_data_homo, num_bins, n_0[8], num_clients, alpha)
 # %%

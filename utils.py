@@ -1,5 +1,6 @@
 import random
 from collections import defaultdict
+from enum import Enum
 
 cifar10_labels = [ "airplane", "automobile", "bird",
                       "cat", "deer", "dog",
@@ -32,3 +33,9 @@ def split_data_homo(data, num_groups):
 
 def score_func(softmax, label):
     return 1.0 - softmax[label]
+
+
+class Modes(Enum):
+    CENTRAL = 1
+    HOMO = 2
+    HETERO = 3

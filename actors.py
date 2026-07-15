@@ -1,5 +1,5 @@
 import numpy as np
-from utils import score_func, cifar10_labels
+from utils import score_func, cifar10_labels, Modes
 
 class Client:
     def __init__(self, data, model, codebook, gain, min_gain, N_max=None):
@@ -67,7 +67,7 @@ class Client:
 
 
 class Server:
-    def __init__(self, model, codebook, min_gain, noise_ratio):
+    def __init__(self, model, codebook, min_gain, noise_ratio, mode=Modes.HOMO, N_max = None):
         self.model = model
         self.M = codebook.shape[0]
         self.codebook = codebook
@@ -77,7 +77,8 @@ class Server:
         self.min_gain = min_gain
         self.P = 1.0
         self.snr = self.P / noise_ratio
-
+        self.mode = mode
+        self.N_max = N_max
     
     def aggregate_data(self, channel):
         """ Aggregate all data currently in the channel """
@@ -105,13 +106,23 @@ class Server:
         #n = len(self.noncon_scores) CENTRALIZED THRESHOLD COMPUTATION
         #q_level = int(np.ceil((n + 1) * (1 - alpha)))
         #return np.quantile(self.noncon_scores, q_level / n, method = 'higher')
-        m, h_min, snr, k, n_a = self.M, self.min_gain, self.snr, self.num_active_clients, self.num_calib_data
-        n_d = n_a / k
-        sigma2 = n_d**2 / (m * h_min**2 * snr * (n_a + 1)**2) # eq. 38
+        m, h_min, snr, k_a, n_a = self.M, self.min_gain, self.snr, self.num_active_clients, self.num_calib_data
+        if self.mode == Modes.HOMO:
+            n_d = n_a / k_a
+            n = n_d
+        elif self.mode == Modes.HETERO:
+            n = self.N_max
+        
+        sigma2 = n**2 / (m * h_min**2 * snr * (n_a + 1)**2) # eq. 38
         alpha_c = alpha - sigma2 * m / (4 * alpha) # eq. 42
 
+        if self.mode == Modes.HOMO:
+            target = 1 - alpha_c
+        elif self.mode == Modes.HETERO:
+            target = np.ceil((1 - alpha_c) * (n_a + k_a)) / n_a
+        
         cdf = np.cumsum(self.histogram) # eq. 39
-        idx = np.searchsorted(cdf, 1 - alpha_c) # eq. 40
+        idx = np.searchsorted(cdf, target) # eq. 40
         idx = min(idx, m - 1)
         
         s = np.linspace(0, 1, m) # eq. 41

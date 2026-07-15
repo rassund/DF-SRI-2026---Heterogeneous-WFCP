@@ -2,7 +2,7 @@ import numpy as np
 from utils import score_func, cifar10_labels
 
 class Client:
-    def __init__(self, data, model, codebook, gain, min_gain):
+    def __init__(self, data, model, codebook, gain, min_gain, N_max=None):
         images = np.array([d[0] for d in data])
         labels = np.array([d[1] for d in data])
 
@@ -18,6 +18,8 @@ class Client:
         self.P = 1.0 # Fixed power constraint. Different SNR can be tested by varying noise ratio N_0.
         self.h = gain
         self.h_min = min_gain
+        self.N_d = len(self.noncon_scores)
+        self.N_max = N_max # If N_max == none then homogeneous distribution is assumed.
 
         bins = np.linspace(0, 1, self.M + 1)
         self.quantized_scores = np.array([
@@ -50,17 +52,18 @@ class Client:
         """
         c, p = self.codebook, histogram
         gamma = np.sqrt(self.M * self.P) * self.h_min # eq. 35
+        gamma /= self.N_d if self.N_max == None else self.N_max
 
         if self.h**2 < self.h_min**2: # eq. 31
             gamma_k = 0
         else:
             gamma_k = gamma / self.h
 
-        return gamma_k * (c @ p) # eq. 28
+        return gamma_k * self.N_d * (c @ p) # eq. 28
     
     def transmit(self, channel):
         """ Convert this clients histogram into a TBMA signal and transmit it into the channel """
-        channel.transmit(self.tbma_encode(self.histogram), self.h, len(self.noncon_scores))
+        channel.transmit(self.tbma_encode(self.histogram), self.h, self.N_d)
 
 
 class Server:

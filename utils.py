@@ -42,7 +42,7 @@ def split_data_homo(data, num_groups):
 
     return data_split
 
-def split_data_hetero(data, num_groups, alpha=0.5, min_samples=20):
+def split_data_hetero(data, num_groups, alpha=0.5, min_samples=5):
     """
     Splits the data heterogeneously, i.e. each split has a different label distribution and size.
 
@@ -80,28 +80,21 @@ def split_data_hetero(data, num_groups, alpha=0.5, min_samples=20):
         proportions = rng.dirichlet(alpha * np.ones(num_groups))
         counts = (proportions * len(indices)).astype(int)
     
-    while counts.sum() < len(indices):
-        counts[rng.integers(num_groups)] += 1
-    
-    start = 0
-    for group, count in enumerate(counts):
-        group_indices[group].extend(indices[start:start+count])
-        start += count
-    
-    while True:
-        sizes = [len(g) for g in group_indices]
+        while counts.sum() < len(indices):
+            counts[rng.integers(num_groups)] += 1
+        
+        start = 0
+        for group, count in enumerate(counts):
+            group_indices[group].extend(indices[start:start+count])
+            start += count
 
-        if min(sizes) >= min_samples:
-            break
+    counts = np.floor(proportions * len(indices)).astype(int)
+    remainder = len(indices) - counts.sum()
 
-        small = np.argmin(sizes)
-        large = np.argmax(sizes)
-
-        idx = group_indices[large].pop()
-        group_indices[small].append(idx)
+    for i in rng.permutation(num_groups)[:remainder]:
+        counts[i] += 1
 
     data_split = [[data[i] for i in indices] for indices in group_indices]
-
     return data_split
 
 def score_func(softmax, label):

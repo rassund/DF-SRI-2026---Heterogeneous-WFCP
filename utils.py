@@ -1,4 +1,5 @@
 import random
+import numpy as np
 from collections import defaultdict
 from enum import Enum
 
@@ -9,8 +10,18 @@ cifar10_labels = [ "airplane", "automobile", "bird",
 def split_data_homo(data, num_groups):
     """
     Splits the data homogeneously, i.e. each split should contain roughly the same proportion of each class.
+
+    Parameters
+    ----------
+    data : list of (image, label)
+        The dataset to split.
+    num_groups : int
+        Number of groups to split the data into.
     
-    The data is assumed to be a list of tuples, where each tuple is of the form (image, label).
+    Returns
+    -------
+    data_split : list
+        A list of the splits. Client i can get their dataset from data_split[i].
     """
     label_groups = defaultdict(list)
     
@@ -28,6 +39,68 @@ def split_data_homo(data, num_groups):
 
     for d in data_split:
         random.shuffle(d)
+
+    return data_split
+
+def split_data_hetero(data, num_groups, alpha=0.5, min_samples=20):
+    """
+    Splits the data heterogeneously, i.e. each split has a different label distribution and size.
+
+    A different label distribution is generated for each split using a Dirichlet distribution.
+    
+    Parameters
+    ----------
+    data : list of (image, label)
+        The dataset to split.
+    num_groups : int
+        Number of groups to split the data into.
+    alpha : float
+        Controls the level of heterogeneity. A smaller value is more heterogeneous. A larger value is closer to IID.
+    min_samples : int
+        The minimum number of samples per client.
+
+    Returns
+    -------
+    data_split : list
+        A list of the splits. Client i can get their dataset from data_split[i].
+    """
+
+    rng = np.random.default_rng()
+
+    class_indices = defaultdict(list)
+    for idx, (_, label) in enumerate(data):
+        class_indices[label].append(idx)
+    
+    for indices in class_indices.values():
+        rng.shuffle(indices)
+    
+    group_indices = [[] for _ in range(num_groups)]
+
+    for indices in class_indices.values():
+        proportions = rng.dirichlet(alpha * np.ones(num_groups))
+        counts = (proportions * len(indices)).astype(int)
+    
+    while counts.sum() < len(indices):
+        counts[rng.integers(num_groups)] += 1
+    
+    start = 0
+    for group, count in enumerate(counts):
+        group_indices[group].extend(indices[start:start+count])
+        start += count
+    
+    while True:
+        sizes = [len(g) for g in group_indices]
+
+        if min(sizes) >= min_samples:
+            break
+
+        small = np.argmin(sizes)
+        large = np.argmax(sizes)
+
+        idx = group_indices[large].pop()
+        group_indices[small].append(idx)
+
+    data_split = [[data[i] for i in indices] for indices in group_indices]
 
     return data_split
 

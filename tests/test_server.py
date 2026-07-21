@@ -21,7 +21,8 @@ class TestServer(unittest.TestCase):
         cls.data = list(zip(test_images, test_labels))
 
     def setUp(self):
-        self.server = Server(self.model, self.codebook, self.num_calib_data, self.min_gain, self.noise_ratio)
+        self.server = Server(self.model, self.codebook, self.min_gain, self.noise_ratio)
+        self.server.num_calib_data = self.num_calib_data
     
     def test_tbma_decode_matches_equation(self):
         self.server.num_active_clients = 5

@@ -107,11 +107,14 @@ class Server:
         #q_level = int(np.ceil((n + 1) * (1 - alpha)))
         #return np.quantile(self.noncon_scores, q_level / n, method = 'higher')
         m, h_min, snr, k_a, n_a = self.M, self.min_gain, self.snr, self.num_active_clients, self.num_calib_data
+        
         if self.mode == Modes.HOMO:
             n_d = n_a / k_a
             n = n_d
         elif self.mode == Modes.HETERO:
             n = self.N_max
+        else:
+            raise ValueError(f"Invalid mode: {self.mode.name}.")
         
         sigma2 = n**2 / (m * h_min**2 * snr * (n_a + 1)**2) # eq. 38
         alpha_c = alpha - sigma2 * m / (4 * alpha) # eq. 42

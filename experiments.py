@@ -23,7 +23,7 @@ def marginal_coverage(model, data, num_clients, split_data, alpha, num_trials, n
         min_gain = 1.0
 
         channel = Channel(noise_ratio)
-        server = Server(model, codebook, num_calib_data, min_gain, noise_ratio)
+        server = Server(model, codebook, min_gain, noise_ratio)
         
         np.random.shuffle(data)
         calib_data, val_data = (data[:num_calib_data], data[num_calib_data:])
@@ -78,7 +78,7 @@ def histogram_test(model, data, split_data, num_bins, noise_ratio, num_clients, 
     min_gain = 1.0
 
     channel = Channel(noise_ratio)
-    server = Server(model, codebook, 1000, min_gain, noise_ratio)
+    server = Server(model, codebook, min_gain, noise_ratio)
 
     np.random.shuffle(data)
     calib_data = data[:1000]

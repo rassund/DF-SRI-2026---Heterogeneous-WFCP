@@ -43,11 +43,11 @@ class TestChannel(unittest.TestCase):
     def test_receive_aggregates_signal(self):
         self.channel.noise_type = "None"
         self.channel.data = [
-            {"signal": np.array([1., 2., 3.]), "fading": 2.0},
-            {"signal": np.array([4., 5., 6.]), "fading": 0.5},
+            {"signal": np.array([1., 2., 3.]), "fading": 2.0, "num_calib": 15},
+            {"signal": np.array([4., 5., 6.]), "fading": 0.5, "num_calib": 10},
         ]
 
-        received, num_clients = self.channel.receive()
+        received, num_clients, num_calib_data = self.channel.receive()
 
         expected = (
             2.0 * np.array([1., 2., 3.]) +
@@ -56,15 +56,16 @@ class TestChannel(unittest.TestCase):
 
         np.testing.assert_array_equal(received, expected, "The channel does not aggregate the signals correctly.")
         self.assertEqual(num_clients, 2, "The channel does not return the correct number of clients.")
+        self.assertEqual(num_calib_data, 25, "The channel does not return the correct number of calibration data.")
     
     def test_receive_clears_channel(self):
         self.channel.data = [
-            {"signal": np.ones(3), "fading": 1}
+            {"signal": np.ones(3), "fading": 1, "num_calib": 1}
         ]
         self.channel.receive()
         self.assertEqual(self.channel.data, [], "The channel does not clear its buffer after sending data through.")
     
     def test_receive_clients_with_no_data(self):
-        data, h = np.array([0, 0, 0]), 1.0
-        self.channel.transmit(data, h)
+        data, h, n = np.array([0, 0, 0]), 1.0, 1
+        self.channel.transmit(data, h, n)
         self.assertRaises(ValueError, self.channel.receive)

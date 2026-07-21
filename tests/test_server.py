@@ -49,6 +49,7 @@ class TestServer(unittest.TestCase):
         channel = DummyChannel()
         self.server.aggregate_data(channel)
         self.assertEqual(self.server.num_active_clients, 7, "The server does not receive the correct number of clients from the channel.")
+        self.assertEqual(self.server.num_calib_data, 5, "The server does not receive the correct number of calibration data from the channel.")
         self.assertIsNotNone(self.server.histogram, "The server does not compute a histogram after receiving data from the channel.")
     
     def test_threshold_returns_valid_quantization_level(self):
@@ -106,4 +107,4 @@ class TestServer(unittest.TestCase):
 
 class DummyChannel():
     def receive(self):
-        return np.array([1., 2., 3., 4., 5.]), 7
+        return np.array([1., 2., 3., 4., 5.]), 7, 5

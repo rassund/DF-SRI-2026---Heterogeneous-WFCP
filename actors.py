@@ -52,7 +52,7 @@ class Client:
         """
         c, p = self.codebook, histogram
         gamma = np.sqrt(self.M * self.P) * self.h_min # eq. 35
-        gamma /= self.N_d if self.N_max == None else self.N_max
+        gamma /= (self.N_d if self.N_max == None else self.N_max)
 
         if self.h**2 < self.h_min**2: # eq. 31
             gamma_k = 0

@@ -3,7 +3,7 @@ import numpy as np
 import tensorflow as tf
 from actors import Server
 from unittest.mock import Mock
-from utils import cifar10_labels
+from utils import cifar10_labels, Modes
 
 class TestServer(unittest.TestCase):
     @classmethod
@@ -103,6 +103,17 @@ class TestServer(unittest.TestCase):
         self.server.threshold = Mock(return_value = 0.2)
         pred = self.server.pred_sets(0.1, np.zeros((1, 32, 32, 3)))
         self.assertEqual(pred, [[cifar10_labels[0]]], "The prediction set does not contain the correct label.")
+    
+    def test_hetero_larger_threshold_than_homo(self):
+        self.server.num_active_clients = 5
+        self.server.num_calib_data = 100
+        self.server.histogram = np.array([0.30, 0.25, 0.20, 0.15, 0.10])
+        self.server.N_max = 30
+        threshold_homo = self.server.threshold(alpha = 0.1)
+        self.server.mode = Modes.HETERO
+        threshold_hetero = self.server.threshold(alpha = 0.1)
+
+        self.assertGreaterEqual(threshold_hetero, threshold_homo, "Hetero WFCP produces a smaller threshold than homo WFCP.")
 
 
 class DummyChannel():

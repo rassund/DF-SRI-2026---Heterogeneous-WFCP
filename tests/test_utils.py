@@ -41,18 +41,23 @@ class TestHeteroSplit(unittest.TestCase):
     def test_small_alpha_is_non_iid(self):
         groups = split_data_hetero(self.data, num_groups = 5, alpha = 0.05)
 
-        dominant_found = False
+        global_dist = Counter(label for _, label in self.data)
+
+        for label in global_dist:
+            global_dist[label] /= len(self.data)
+
+        heterogeneous = False
 
         for group in groups:
-            labels = [label for _, label in group]
-            counts = Counter(labels)
+            counts = Counter(label for _, label in group)
 
-            if len(labels) > 0:
-                dominant_fraction = max(counts.values()) / len(labels)
-                if dominant_fraction > 0.8:
-                    dominant_found = True
+            for label in global_dist:
+                local = counts[label] / len(group)
 
-        self.assertTrue(dominant_found)
+                if abs(local - global_dist[label]) > 0.2:
+                    heterogeneous = True
+
+        self.assertTrue(heterogeneous)
     
     def test_large_alpha_is_nearly_iid(self):
         groups = split_data_hetero(self.data, num_groups = 5, alpha = 100)

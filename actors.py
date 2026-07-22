@@ -2,7 +2,7 @@ import numpy as np
 from utils import score_func, cifar10_labels, Modes
 
 class Client:
-    def __init__(self, data, model, codebook, gain, min_gain, N_max=None):
+    def __init__(self, data, model, codebook, gain, min_gain, N_max = None):
         images = np.array([d[0] for d in data])
         labels = np.array([d[1] for d in data])
 
@@ -67,7 +67,7 @@ class Client:
 
 
 class Server:
-    def __init__(self, model, codebook, min_gain, noise_ratio, mode=Modes.HOMO, N_max = None):
+    def __init__(self, model, codebook, min_gain, noise_ratio, mode = Modes.HOMO, N_max = None):
         self.model = model
         self.M = codebook.shape[0]
         self.codebook = codebook
@@ -79,6 +79,26 @@ class Server:
         self.snr = self.P / noise_ratio
         self.mode = mode
         self.N_max = N_max
+        self.noncon_scores = None
+    
+    def calibrate(self, calib_data):
+        """
+        Computes the nonconformity scores of a set of calibration data.
+
+        Parameters
+        ----------
+        calib_data : list of (image, label)
+            The calibration dataset.
+        """
+        images = np.array([d[0] for d in calib_data])
+        labels = np.array([d[1] for d in calib_data])
+
+        softmax_dists = self.model.predict(images, verbose=False)
+
+        self.noncon_scores = np.array([
+            score_func(softmax_dists[i], labels[i])
+            for i in range(len(labels))
+        ])
     
     def aggregate_data(self, channel):
         """ Aggregate all data currently in the channel """
@@ -103,9 +123,14 @@ class Server:
         Based on equations 38-42 in Federated Inference With Reliable Uncertainty Quantificiation Over
         Wireless Channels via Conformal Prediction (2024) by Zhu et al.
         """
-        #n = len(self.noncon_scores) CENTRALIZED THRESHOLD COMPUTATION
-        #q_level = int(np.ceil((n + 1) * (1 - alpha)))
-        #return np.quantile(self.noncon_scores, q_level / n, method = 'higher')
+        if self.mode == Modes.CENTRAL:
+            if self.noncon_scores == None:
+                raise RuntimeError("The server has not received calibration data.")
+            
+            n = len(self.noncon_scores)
+            q_level = int(np.ceil((n + 1) * (1 - alpha)))
+            return np.quantile(self.noncon_scores, q_level / n, method = "higher")
+
         m, h_min, snr, k_a, n_a = self.M, self.min_gain, self.snr, self.num_active_clients, self.num_calib_data
         
         if self.mode == Modes.HOMO:
@@ -152,7 +177,7 @@ class Server:
 
 
 class Channel:
-    def __init__(self, noise_ratio, noise_type="Gaussian"):
+    def __init__(self, noise_ratio, noise_type = "Gaussian"):
         self.data = []
         self.n_0 = noise_ratio
         self.noise_type = noise_type

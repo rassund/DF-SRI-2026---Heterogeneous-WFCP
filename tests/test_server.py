@@ -108,10 +108,9 @@ class TestServer(unittest.TestCase):
         self.server.num_active_clients = 5
         self.server.num_calib_data = 100
         self.server.histogram = np.array([0.30, 0.25, 0.20, 0.15, 0.10])
-        self.server.N_max = 30
         threshold_homo = self.server.threshold(alpha = 0.1)
         self.server.mode = Modes.HETERO
-        threshold_hetero = self.server.threshold(alpha = 0.1)
+        threshold_hetero = self.server.threshold(alpha = 0.1, N_max = 30)
 
         self.assertGreaterEqual(threshold_hetero, threshold_homo, "Hetero WFCP produces a smaller threshold than homo WFCP.")
 

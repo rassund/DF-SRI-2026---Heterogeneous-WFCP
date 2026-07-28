@@ -2,7 +2,7 @@ import numpy as np
 from utils import score_func, cifar10_labels, Modes
 
 class Client:
-    def __init__(self, model, codebook, gain, min_gain, N_max = None):
+    def __init__(self, model, codebook, gain, min_gain):
         self.model = model
         self.M = codebook.shape[0]
         self.codebook = codebook
@@ -10,10 +10,10 @@ class Client:
         self.h = gain
         self.h_min = min_gain
         self.N_d = None
-        self.N_max = N_max # If N_max == None then homogeneous distribution is assumed.
+        self.N_max = None # If N_max == None then homogeneous distribution is assumed.
         self.is_calibrated = False
 
-    def calibrate(self, calib_data):
+    def calibrate(self, calib_data, N_max = None):
         images = np.array([d[0] for d in calib_data])
         labels = np.array([d[1] for d in calib_data])
         
@@ -25,6 +25,7 @@ class Client:
         ])
 
         self.N_d = len(noncon_scores)
+        self.N_max = N_max
 
         bins = np.linspace(0, 1, self.M + 1)
         self.quantized_scores = np.array([
@@ -76,7 +77,7 @@ class Client:
 
 
 class Server:
-    def __init__(self, model, codebook, min_gain, noise_ratio, mode = Modes.HOMO, N_max = None):
+    def __init__(self, model, codebook, min_gain, noise_ratio, mode = Modes.HOMO):
         self.model = model
         self.M = codebook.shape[0]
         self.codebook = codebook
@@ -87,7 +88,6 @@ class Server:
         self.P = 1.0
         self.snr = self.P / noise_ratio
         self.mode = mode
-        self.N_max = N_max
         self.noncon_scores = None
         self.is_calibrated = False
     
@@ -128,7 +128,7 @@ class Server:
         r[-1] += 1 / (n_a + 1)
         return r
     
-    def threshold(self, alpha):
+    def threshold(self, alpha, N_max = None):
         """
         Compute and return the threshold.
         Based on equations 38-42 in Federated Inference With Reliable Uncertainty Quantificiation Over
@@ -148,7 +148,7 @@ class Server:
             n_d = n_a / k_a
             n = n_d
         elif self.mode == Modes.HETERO:
-            n = self.N_max
+            n = N_max
         else:
             raise ValueError(f"Invalid mode: {self.mode.name}.")
         
@@ -167,15 +167,17 @@ class Server:
         s = np.linspace(0, 1, m) # eq. 41
         return s[idx]
     
-    def pred_sets(self, alpha, images):
+    def pred_sets(self, alpha, images, N_max = None):
         """ Compute and return the prediction sets for all images """
         if self.mode == Modes.CENTRAL and not self.is_calibrated:
             raise RuntimeError("Prediction sets cannot be generated without first calibrating.")
+        if self.mode == Modes.HETERO and N_max == None:
+            raise RuntimeError("N_max cannot be None in HETERO WFCP mode.")
 
         pred_sets = []
 
         # quantile correction to determine alpha_c
-        threshold = self.threshold(alpha)
+        threshold = self.threshold(alpha, N_max)
 
         softmax_dist = self.model.predict(images, verbose=False)
 

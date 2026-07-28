@@ -23,7 +23,8 @@ class TestClient(unittest.TestCase):
         np.random.shuffle(self.data)
         calib_data = self.data[:self.num_calib_data]
 
-        self.client = Client(calib_data, self.model, self.codebook, gain, self.min_gain)
+        self.client = Client(self.model, self.codebook, gain, self.min_gain)
+        self.client.calibrate(calib_data)
     
     def test_quantization_boundaries(self):
         """

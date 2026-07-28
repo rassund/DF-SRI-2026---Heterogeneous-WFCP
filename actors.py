@@ -2,32 +2,38 @@ import numpy as np
 from utils import score_func, cifar10_labels, Modes
 
 class Client:
-    def __init__(self, data, model, codebook, gain, min_gain, N_max = None):
-        images = np.array([d[0] for d in data])
-        labels = np.array([d[1] for d in data])
-
-        softmax_dists = model.predict(images, verbose=False)
-
-        self.noncon_scores = np.array([
-            self.noncon_score(softmax_dists[i], labels[i])
-            for i in range(len(labels))
-        ])
-
+    def __init__(self, model, codebook, gain, min_gain, N_max = None):
+        self.model = model
         self.M = codebook.shape[0]
         self.codebook = codebook
         self.P = 1.0 # Fixed power constraint. Different SNR can be tested by varying noise ratio N_0.
         self.h = gain
         self.h_min = min_gain
-        self.N_d = len(self.noncon_scores)
-        self.N_max = N_max # If N_max == none then homogeneous distribution is assumed.
+        self.N_d = None
+        self.N_max = N_max # If N_max == None then homogeneous distribution is assumed.
+        self.is_calibrated = False
+
+    def calibrate(self, calib_data):
+        images = np.array([d[0] for d in calib_data])
+        labels = np.array([d[1] for d in calib_data])
+        
+        softmax_dists = self.model.predict(images, verbose=False)
+        
+        noncon_scores = np.array([
+            self.noncon_score(softmax_dists[i], labels[i])
+            for i in range(len(labels))
+        ])
+
+        self.N_d = len(noncon_scores)
 
         bins = np.linspace(0, 1, self.M + 1)
         self.quantized_scores = np.array([
             self.quantize(s[0], bins)
-            for s in self.noncon_scores
+            for s in noncon_scores
         ])
-
+        
         self.histogram = self.compute_histogram(self.quantized_scores)
+        self.is_calibrated = True
     
     def noncon_score(self, softmax_dist, label):
         """ Compute nonconformity score: s(x,y) = 1 - p(y|x) """
@@ -63,6 +69,9 @@ class Client:
     
     def transmit(self, channel):
         """ Convert this clients histogram into a TBMA signal and transmit it into the channel """
+        if not self.is_calibrated:
+            raise RuntimeError("Histogram cannot be transmitted without first calibrating.")
+        
         channel.transmit(self.tbma_encode(self.histogram), self.h, self.N_d)
 
 
@@ -80,6 +89,7 @@ class Server:
         self.mode = mode
         self.N_max = N_max
         self.noncon_scores = None
+        self.is_calibrated = False
     
     def calibrate(self, calib_data):
         """
@@ -99,6 +109,7 @@ class Server:
             score_func(softmax_dists[i], labels[i])
             for i in range(len(labels))
         ])
+        self.is_calibrated = True
     
     def aggregate_data(self, channel):
         """ Aggregate all data currently in the channel """
@@ -158,6 +169,9 @@ class Server:
     
     def pred_sets(self, alpha, images):
         """ Compute and return the prediction sets for all images """
+        if self.mode == Modes.CENTRAL and not self.is_calibrated:
+            raise RuntimeError("Prediction sets cannot be generated without first calibrating.")
+
         pred_sets = []
 
         # quantile correction to determine alpha_c

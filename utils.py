@@ -69,7 +69,7 @@ def split_data_hetero(data, num_groups, alpha=0.5, min_samples=5):
 
     class_indices = defaultdict(list)
     for idx, (_, label) in enumerate(data):
-        class_indices[label].append(idx)
+        class_indices[label[0] if isinstance(label, list) else label].append(idx)
     
     for indices in class_indices.values():
         rng.shuffle(indices)

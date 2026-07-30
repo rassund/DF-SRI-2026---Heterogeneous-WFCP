@@ -23,6 +23,7 @@ def split_data_homo(data, num_groups):
     data_split : list
         A list of the splits. Client i can get their dataset from data_split[i].
     """
+    
     label_groups = defaultdict(list)
     
     for image, label in data:

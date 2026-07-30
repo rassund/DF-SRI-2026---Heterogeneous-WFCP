@@ -2,6 +2,8 @@ import random
 import numpy as np
 from collections import defaultdict
 from enum import Enum
+from dataclasses import dataclass
+from typing import Any
 
 cifar10_labels = [ "airplane", "automobile", "bird",
                       "cat", "deer", "dog",
@@ -23,7 +25,7 @@ def split_data_homo(data, num_groups):
     data_split : list
         A list of the splits. Client i can get their dataset from data_split[i].
     """
-    
+
     label_groups = defaultdict(list)
     
     for image, label in data:
@@ -106,3 +108,18 @@ class Modes(Enum):
     CENTRAL = 1
     HOMO = 2
     HETERO = 3
+
+
+@dataclass
+class ExperimentConfig:
+    data: list
+    model: Any
+    num_trials: int
+    num_clients: int
+    num_bins: int
+    num_calib_data: int
+    min_gain: float
+    noise_ratio: float
+    dirichlet_alpha: float
+    alpha: float
+    gains: list = np.random.rayleigh(scale=np.sqrt(0.5), size=num_clients)

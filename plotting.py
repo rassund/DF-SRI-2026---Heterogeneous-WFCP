@@ -1,6 +1,6 @@
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
-def coverage_plot(coverage, alphas):
+def plot_coverage(coverage, alphas):
     target = [1-a for a in alphas]
 
     (central_means, central_stds) = coverage["central"]
@@ -8,14 +8,10 @@ def coverage_plot(coverage, alphas):
     (hetero_means, hetero_stds) = coverage["hetero"]
 
     plt.figure(figsize=(6,6))
-    plt.plot(target, central_means, "o-", label="Centralized CP")
-    plt.plot(target, homo_means, "s-", label="WFCP")
-    plt.plot(target, hetero_means, "^-", label="Heterogeneous WFCP")
+    plt.errorbar(target, central_means, yerr=central_stds, fmt="o-", capsize=4, label="Centralized CP")
+    plt.errorbar(target, homo_means, yerr=homo_stds, fmt="s-", capsize=4, label="WFCP")
+    plt.errorbar(target, hetero_means, yerr=hetero_stds, fmt="^-", capsize=4, label="Heterogeneous WFCP")
     plt.plot([0.8, 1.0], [0.8, 1.0], "--", color="black", label="Ideal")
-
-    plt.errorbar(target, central_means, yerr=central_stds, fmt="o-", capsize=3, label="Centralized CP")
-    plt.errorbar(target, homo_stds, yerr=homo_stds, fmt="s-", capsize=3, label="WFCP")
-    plt.errorbar(target, hetero_means, yerr=hetero_stds, fmt="^-", capsize=3, label="Heterogeneous WFCP")
 
     plt.xlabel("Target coverage")
     plt.ylabel("Empirical coverage")

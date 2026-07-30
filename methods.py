@@ -66,8 +66,8 @@ class WFCP(MethodInterface):
         )
     
     def calibrate(self, calib_data_split):
-        for i in range(self.clients):
-            self.clients[i].calibrate(calib_data_split[i])
+        for i, client in enumerate(self.clients):
+            client.calibrate(calib_data_split[i])
 
     def predict(self, alpha, images):
         for client in self.clients:
@@ -95,9 +95,9 @@ class HETERO_WFCP(MethodInterface):
         self.N_max = None
     
     def calibrate(self, calib_data_split):
-        self.N_max = max(calib_data_split, key=len)
-        for i in range(self.clients):
-            self.clients[i].calibrate(calib_data_split[i], self.N_max)
+        self.N_max = len(max(calib_data_split, key=len))
+        for i, client in enumerate(self.clients):
+            client.calibrate(calib_data_split[i], self.N_max)
     
     def predict(self, alpha, images):
         for client in self.clients:

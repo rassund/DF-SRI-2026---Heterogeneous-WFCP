@@ -1,5 +1,4 @@
 import unittest
-import numpy as np
 from utils import split_data_hetero
 from collections import Counter
 

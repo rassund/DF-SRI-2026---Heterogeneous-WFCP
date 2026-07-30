@@ -26,6 +26,9 @@ def split_data_homo(data, num_groups):
         A list of the splits. Client i can get their dataset from data_split[i].
     """
 
+    if num_groups == 1:
+        return data
+
     label_groups = defaultdict(list)
     
     for image, label in data:
@@ -68,11 +71,14 @@ def split_data_hetero(data, num_groups, alpha=0.5, min_samples=5):
         A list of the splits. Client i can get their dataset from data_split[i].
     """
 
+    if num_groups == 1:
+        return data
+
     rng = np.random.default_rng()
 
     class_indices = defaultdict(list)
     for idx, (_, label) in enumerate(data):
-        class_indices[label[0] if isinstance(label, list) else label].append(idx)
+        class_indices[label[0] if isinstance(label, np.ndarray) else label].append(idx)
     
     for indices in class_indices.values():
         rng.shuffle(indices)
@@ -103,6 +109,31 @@ def split_data_hetero(data, num_groups, alpha=0.5, min_samples=5):
 def score_func(softmax, label):
     return 1.0 - softmax[label]
 
+def get_calib_and_val_data(data, num_calib_data):
+    """
+    Picks a random sample of data as calibration data and the remaining data as validation data.
+
+    Parameters
+    ----------
+    data : list of (image, label)
+        The dataset to sample from.
+    num_calib_data : int
+        The number of data to pick as calibration data.
+    
+    Returns
+    -------
+    calib_data : list of (image, label)
+        The sampled calibration data.
+    val_data : list of (image, label)
+        The remaining validation data.
+    """
+    if num_calib_data > len(data):
+        raise ValueError("The number of calibration data cannot be greater than the total number of data.")
+
+    d = random.sample(data, len(data))
+    calib_data, val_data = (d[:num_calib_data], d[num_calib_data:])
+    return calib_data, val_data
+
 
 class Modes(Enum):
     CENTRAL = 1
@@ -122,4 +153,7 @@ class ExperimentConfig:
     noise_ratio: float
     dirichlet_alpha: float
     alpha: float
-    gains: list = np.random.rayleigh(scale=np.sqrt(0.5), size=num_clients)
+    gains: list = None
+
+    def generate_gains(self):
+        self.gains = np.random.rayleigh(scale=np.sqrt(0.5), size=self.num_clients)

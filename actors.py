@@ -59,7 +59,7 @@ class Client:
         """
         c, p = self.codebook, histogram
         gamma = np.sqrt(self.M * self.P) * self.h_min # eq. 35
-        gamma /= (self.N_d if self.N_max == None else self.N_max)
+        gamma /= (self.N_d if self.N_max is None else self.N_max)
 
         if self.h**2 < self.h_min**2: # eq. 31
             gamma_k = 0
@@ -72,7 +72,7 @@ class Client:
         """ Convert this clients histogram into a TBMA signal and transmit it into the channel """
         if not self.is_calibrated:
             raise RuntimeError("Histogram cannot be transmitted without first calibrating.")
-        
+
         channel.transmit(self.tbma_encode(self.histogram), self.h, self.N_d)
 
 
@@ -135,7 +135,7 @@ class Server:
         Wireless Channels via Conformal Prediction (2024) by Zhu et al.
         """
         if self.mode == Modes.CENTRAL:
-            if self.noncon_scores == None:
+            if self.noncon_scores is None:
                 raise RuntimeError("The server has not received calibration data.")
             
             n = len(self.noncon_scores)

@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from actors import Client, Server, Channel
 from utils import cifar10_labels, split_data_homo, split_data_hetero, Modes
+from methods import CentralCP, WFCP, HETERO_WFCP
 
 def marginal_coverage(model, data, num_clients, mode, alpha, num_trials, num_calib_data, noise_ratio, num_bins):
     """
@@ -106,10 +107,31 @@ def histogram_test(model, data, split_data, num_bins, noise_ratio, num_clients, 
     print("Threshold:")
     print(server.threshold(alpha))
 
-def evaluate_method(method, data, alphas, num_trials, num_calib_data=1000):
+def coverage_experiment(config, alphas):
+    results = {
+        "central": [],
+        "wfcp": [],
+        "hetero": []
+    }
+
+    central = CentralCP(config.model),
+    wfcp = WFCP(config.model, config.num_bins, config.num_clients, config.noise_ratio, config.gains, config.min_gain),
+    hetero = HETERO_WFCP(config.model, config.num_bins, config.num_clients, config.noise_ratio, config.gains, config.min_gain)
+
+    methods = [central, wfcp, hetero]
+
+    for i in range(3):
+        means, stds = evaluate_coverage(methods[i], config.data, alphas, config.num_trials, config.num_calib_data)
+        results[i].append({
+            "means": means,
+            "stds": stds
+        })
+
+    return results
+
+def evaluate_coverage(method, data, alphas, num_trials, num_calib_data):
     """
-    Evaluates the given method based on marginal coverage and average prediction set size.
-    Both evaluations are printed as graphs.
+    Evaluates the given method based on marginal coverage.
     The evaluation is done over many trials with the result being the average of all trials.
 
     Parameters
@@ -126,6 +148,8 @@ def evaluate_method(method, data, alphas, num_trials, num_calib_data=1000):
     num_calib_data : int
         The number of data to use as calibration data. The rest will be used as validation data.
     """
+
+    calib_data, val_data = get_calib_and_val_data(data, num_calib_data)
 
     means = []
     stds = []
@@ -145,28 +169,6 @@ def evaluate_method(method, data, alphas, num_trials, num_calib_data=1000):
 
     return means, stds
 
-def coverage_plot(alphas, central_means, central_stds, homo_means, homo_stds, hetero_means, hetero_stds):
-    target = [1-a for a in alphas]
-
-    plt.figure(figsize=(6,6))
-    plt.plot(target, central_means, "o-", label="Centralized CP")
-    plt.plot(target, homo_means, "s-", label="WFCP")
-    plt.plot(target, hetero_means, "^-", label="Heterogeneous WFCP")
-    plt.plot([0.8, 1.0], [0.8, 1.0], "--", color="black", label="Ideal")
-
-    plt.errorbar(target, central_means, yerr=central_stds, fmt="o-", capsize=3, label="Centralized CP")
-    plt.errorbar(target, homo_stds, yerr=homo_stds, fmt="s-", capsize=3, label="WFCP")
-    plt.errorbar(target, hetero_means, yerr=hetero_stds, fmt="^-", capsize=3, label="Heterogeneous WFCP")
-
-    plt.xlabel("Target coverage")
-    plt.ylabel("Empirical coverage")
-    plt.xlim(0.79, 1.0)
-    plt.ylim(0.79, 1.0)
-    plt.grid(True)
-    plt.legend()
-    plt.tight_layout
-    plt.show()
-
 def get_calib_and_val_data(data, num_calib_data):
     """
     Picks a random sample of data as calibration data and the remaining data as validation data.
@@ -185,6 +187,8 @@ def get_calib_and_val_data(data, num_calib_data):
     val_data : list of (image, label)
         The remaining validation data.
     """
+    if num_calib_data > len(data):
+        raise ValueError("The number of calibration data cannot be greater than the total number of data.")
 
     d = np.random.sample(data, len(data))
     calib_data, val_data = (data[:num_calib_data], data[num_calib_data:])

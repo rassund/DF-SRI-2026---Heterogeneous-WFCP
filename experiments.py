@@ -122,10 +122,7 @@ def coverage_experiment(config, alphas):
 
     for i in range(3):
         means, stds = evaluate_coverage(methods[i], config.data, alphas, config.num_trials, config.num_calib_data)
-        results[i].append({
-            "means": means,
-            "stds": stds
-        })
+        results[i].append(means, stds)
 
     return results
 

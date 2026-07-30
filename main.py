@@ -35,8 +35,8 @@ config = ExperimentConfig(
 )
 
 coverage = coverage_experiment(config, alphas)
-plot_coverage(coverage)
+plot_coverage(coverage, alphas)
 
 set_size = set_size_experiment(config, alphas)
-plot_set_size(set_size)
+plot_set_size(set_size, alphas)
 # %%

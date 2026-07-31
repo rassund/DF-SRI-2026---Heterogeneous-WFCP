@@ -32,13 +32,12 @@ config = ExperimentConfig(
     num_valid_data=9000,
     min_gain=1.0,
     noise_ratio=1.0,
-    dirichlet_alpha=10,
+    dirichlet_alpha=0.5,
     alpha=0.1
 )
 config.generate_gains()
 
 coverage = coverage_experiment(config, alphas)
-print(coverage)
 plot_coverage(coverage, alphas)
 
 #set_size = set_size_experiment(config, alphas)

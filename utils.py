@@ -76,35 +76,33 @@ def split_data_hetero(data, num_groups, alpha=0.5, min_samples=5):
 
     rng = np.random.default_rng()
 
-    class_indices = defaultdict(list)
-    for idx, (_, label) in enumerate(data):
-        class_indices[label[0] if isinstance(label, np.ndarray) else label].append(idx)
-    
-    for indices in class_indices.values():
-        rng.shuffle(indices)
-    
-    group_indices = [[] for _ in range(num_groups)]
-
-    for indices in class_indices.values():
-        proportions = rng.dirichlet(alpha * np.ones(num_groups))
-        counts = (proportions * len(indices)).astype(int)
-    
-        while counts.sum() < len(indices):
-            counts[rng.integers(num_groups)] += 1
+    while True:
+        class_indices = defaultdict(list)
+        for idx, (_, label) in enumerate(data):
+            class_indices[label[0] if isinstance(label, np.ndarray) else label].append(idx)
         
-        start = 0
-        for group, count in enumerate(counts):
-            group_indices[group].extend(indices[start:start+count])
-            start += count
+        for indices in class_indices.values():
+            rng.shuffle(indices)
+        
+        group_indices = [[] for _ in range(num_groups)]
 
-    counts = np.floor(proportions * len(indices)).astype(int)
-    remainder = len(indices) - counts.sum()
+        for indices in class_indices.values():
+            proportions = rng.dirichlet(alpha * np.ones(num_groups))
+            counts = np.floor(proportions * len(indices)).astype(int)
+            remainder = len(indices) - counts.sum()
 
-    for i in rng.permutation(num_groups)[:remainder]:
-        counts[i] += 1
+            for i in np.argsort(proportions)[-remainder:]:
+                counts[i] += 1
+            
+            start = 0
+            for group, count in enumerate(counts):
+                group_indices[group].extend(indices[start:start+count])
+                start += count
 
-    data_split = [[data[i] for i in indices] for indices in group_indices]
-    return data_split
+        if min(len(group) for group in group_indices) >= min_samples:
+            break
+
+    return [[data[i] for i in indices] for indices in group_indices]
 
 def score_func(softmax, label):
     return 1.0 - softmax[label]

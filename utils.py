@@ -109,7 +109,7 @@ def split_data_hetero(data, num_groups, alpha=0.5, min_samples=5):
 def score_func(softmax, label):
     return 1.0 - softmax[label]
 
-def get_calib_and_val_data(data, num_calib_data):
+def get_calib_and_val_data(data, num_calib_data, num_valid_data):
     """
     Picks a random sample of data as calibration data and the remaining data as validation data.
 
@@ -119,19 +119,21 @@ def get_calib_and_val_data(data, num_calib_data):
         The dataset to sample from.
     num_calib_data : int
         The number of data to pick as calibration data.
+    num_valid_data : int
+        The number of data to pick as validation data.
     
     Returns
     -------
     calib_data : list of (image, label)
         The sampled calibration data.
     val_data : list of (image, label)
-        The remaining validation data.
+        The sampled validation data.
     """
-    if num_calib_data > len(data):
-        raise ValueError("The number of calibration data cannot be greater than the total number of data.")
+    if num_calib_data + num_valid_data > len(data):
+        raise ValueError("The number of calibration and validation data cannot be greater than the total number of data.")
 
     d = random.sample(data, len(data))
-    calib_data, val_data = (d[:num_calib_data], d[num_calib_data:])
+    calib_data, val_data = (d[:num_calib_data], d[num_calib_data:num_calib_data + num_valid_data])
     return calib_data, val_data
 
 
@@ -149,6 +151,7 @@ class ExperimentConfig:
     num_clients: int
     num_bins: int
     num_calib_data: int
+    num_valid_data : int
     min_gain: float
     noise_ratio: float
     dirichlet_alpha: float

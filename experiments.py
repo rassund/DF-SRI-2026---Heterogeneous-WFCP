@@ -131,14 +131,14 @@ def coverage_experiment(config, alphas):
 
     for method in methods:
         means, stds = evaluate_coverage(methods[method], config.data, alphas, config.num_trials,
-                                        config.num_calib_data, config.dirichlet_alpha,
+                                        config.num_calib_data, config.num_valid_data, config.dirichlet_alpha,
                                         1 if method == "central" else config.num_clients)
         results[method].append(means)
         results[method].append(stds)
 
     return results
 
-def evaluate_coverage(method: MethodInterface, data, alphas, num_trials, num_calib_data, dir_alpha, num_clients):
+def evaluate_coverage(method: MethodInterface, data, alphas, num_trials, num_calib_data, num_valid_data, dir_alpha, num_clients):
     """
     Evaluates the given method based on marginal coverage.
     The evaluation is done over many trials with the result being the average of all trials.
@@ -155,38 +155,37 @@ def evaluate_coverage(method: MethodInterface, data, alphas, num_trials, num_cal
     num_trials : int
         The number of trials to run and average over.
     num_calib_data : int
-        The number of data to use as calibration data. The rest will be used as validation data.
+        The number of data to use as calibration data.
+    num_valid_data : int
+        The number of data to use as validation data.
+    dir_alpha : float
+        The degree of heterogeneity.
+    num_clients : int
+        The number of clients to split the calibration data across.
     """
-
-    calib_data, val_data = get_calib_and_val_data(data, num_calib_data)
-    val_images = np.array([d[0] for d in val_data])
-    val_labels = np.array([d[1] for d in val_data])
-    #calib_data_split = split_data_hetero(data=calib_data, num_groups=num_clients, alpha=dir_alpha)
-    calib_data_split = split_data_homo(data=calib_data, num_groups=num_clients)
 
     means = []
     stds = []
 
-    for alpha in alphas:
-        coverages = []
+    coverages = [[] for _ in alphas]
 
-        for _ in range(num_trials):
-            method.calibrate(calib_data_split)
+    for _ in range(num_trials):
+        calib_data, val_data = get_calib_and_val_data(data, num_calib_data, num_valid_data)
+        val_images = np.array([d[0] for d in val_data])
+        val_labels = np.array([d[1] for d in val_data])
+        calib_data_split = split_data_hetero(data=calib_data, num_groups=num_clients, alpha=dir_alpha)
+        #calib_data_split = split_data_homo(data=calib_data, num_groups=num_clients)
+
+        method.calibrate(calib_data_split)
+
+        for i, alpha in enumerate(alphas):
             prediction_sets = method.predict(alpha, val_images)
 
             coverage = marginal_coverage(prediction_sets, val_labels)
-            coverages.append(coverage)
+            coverages[i].append(coverage)
 
-            # DEBUG
-            if isinstance(method, WFCP):
-                pass
-                #print(f"alpha: {alpha}")
-                #print(f"threshold: {method.server.threshold(alpha)}")
-                #sizes = [len(S) for S in prediction_sets]
-                #print(f"average set size: {np.mean(sizes)}")
-
-        means.append(np.mean(coverages))
-        stds.append(np.std(coverages))
+    means = [np.mean(c) for c in coverages]
+    stds = [np.std(c) for c in coverages]
 
     return means, stds
 

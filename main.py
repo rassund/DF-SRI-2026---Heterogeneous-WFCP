@@ -1,7 +1,7 @@
 # %%
 import tensorflow as tf
-from experiments import coverage_experiment
-from plotting import plot_coverage
+from experiments import coverage_and_set_size_experiment
+from plotting import plot_coverage, plot_set_size
 from utils import ExperimentConfig
 
 model_path = "cnn_model_cifar10.keras"
@@ -20,26 +20,25 @@ n_0 = [
 # Defines the level of heterogeneity. Lower = more hetero, higher = less hetero.
 dirichlet_alphas = [10, 1, 0.5, 0.1, 0.05]
 
-alphas = [0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.18, 0.20]
+#alphas = [0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.18, 0.20]
+alphas = [0.05, 0.1, 0.2]
 
 config = ExperimentConfig(
     data=data,
     model=model,
-    num_trials=5,
+    num_trials=1,
     num_clients=20,
     num_bins=60,
     num_calib_data=1000,
     num_valid_data=9000,
     min_gain=1.0,
     noise_ratio=1.0,
-    dirichlet_alpha=0.5,
+    dirichlet_alpha=10,
     alpha=0.1
 )
 config.generate_gains()
 
-coverage = coverage_experiment(config, alphas)
-plot_coverage(coverage, alphas)
-
-#set_size = set_size_experiment(config, alphas)
-#plot_set_size(set_size, alphas)
+results = coverage_and_set_size_experiment(config, alphas)
+plot_coverage(results, alphas)
+plot_set_size(results, alphas)
 # %%

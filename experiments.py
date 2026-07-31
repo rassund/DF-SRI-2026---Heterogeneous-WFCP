@@ -116,7 +116,7 @@ from methods import MethodInterface, CentralCP, WFCP, HETERO_WFCP
 #     sizes = [len(S) for S in sets]
 #     print("Central server average set size:", np.mean(sizes))
 
-def coverage_experiment(config, alphas):
+def coverage_and_set_size_experiment(config, alphas):
     results = {
         "central": [],
         "wfcp": [],
@@ -130,17 +130,18 @@ def coverage_experiment(config, alphas):
     }
 
     for method in methods:
-        means, stds = evaluate_coverage(methods[method], config.data, alphas, config.num_trials,
+        means, stds, avg_sizes = evaluate_method(methods[method], config.data, alphas, config.num_trials,
                                         config.num_calib_data, config.num_valid_data, config.dirichlet_alpha,
                                         1 if method == "central" else config.num_clients)
         results[method].append(means)
         results[method].append(stds)
+        results[method].append(avg_sizes)
 
     return results
 
-def evaluate_coverage(method: MethodInterface, data, alphas, num_trials, num_calib_data, num_valid_data, dir_alpha, num_clients):
+def evaluate_method(method: MethodInterface, data, alphas, num_trials, num_calib_data, num_valid_data, dir_alpha, num_clients):
     """
-    Evaluates the given method based on marginal coverage.
+    Evaluates the given method based on marginal coverage and average prediction set size.
     The evaluation is done over many trials with the result being the average of all trials.
 
     Parameters
@@ -162,12 +163,23 @@ def evaluate_coverage(method: MethodInterface, data, alphas, num_trials, num_cal
         The degree of heterogeneity.
     num_clients : int
         The number of clients to split the calibration data across.
+    
+    Returns
+    -------
+    means : list
+        The mean coverages for each alpha value over all trials.
+    stds : list
+        The standard deviation of the coverages over all trials.
+    avg_sizes : list
+        The average prediction set sizes for each alpha value over all trials.
     """
 
     means = []
     stds = []
+    avg_sizes = []
 
     coverages = [[] for _ in alphas]
+    set_sizes = [[] for _ in alphas]
 
     for _ in range(num_trials):
         calib_data, val_data = get_calib_and_val_data(data, num_calib_data, num_valid_data)
@@ -184,10 +196,13 @@ def evaluate_coverage(method: MethodInterface, data, alphas, num_trials, num_cal
             coverage = marginal_coverage(prediction_sets, val_labels)
             coverages[i].append(coverage)
 
+            set_sizes[i].append([len(s) for s in prediction_sets])
+
     means = [np.mean(c) for c in coverages]
     stds = [np.std(c) for c in coverages]
+    avg_sizes = [np.mean(s) for s in set_sizes]
 
-    return means, stds
+    return means, stds, avg_sizes
 
 def marginal_coverage(pred_sets, val_labels):
     return np.mean([cifar10_labels[y[0]] in pred_set for y, pred_set in zip(val_labels, pred_sets)])

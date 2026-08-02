@@ -1,22 +1,30 @@
 import matplotlib.pyplot as plt
+from utils import ExperimentResult
 
-def plot_coverage(coverage, alphas, error_bars=False):
-    target = [1-a for a in alphas]
+methods = [
+    ("central", "o-", "Centralized CP"),
+    ("wfcp", "s-", "WFCP"),
+    ("hetero", "^-", "Heterogeneous WFCP")
+]
 
-    (central_means, central_stds, _) = coverage["central"]
-    (homo_means, homo_stds, _) = coverage["wfcp"]
-    (hetero_means, hetero_stds, _) = coverage["hetero"]
+def plot_coverage(results, alphas, error_bars=False):
+    x = [1-a for a in alphas]
 
     plt.figure(figsize=(6,6))
 
-    plt.errorbar(target, central_means, yerr=central_stds if error_bars else None,
-                 fmt="o-", capsize=4, label="Centralized CP")
-    plt.errorbar(target, homo_means, yerr=homo_stds if error_bars else None,
-                 fmt="s-", capsize=4, label="WFCP")
-    plt.errorbar(target, hetero_means, yerr=hetero_stds if error_bars else None,
-                 fmt="^-", capsize=4, label="Heterogeneous WFCP")
+    for method, marker, label in methods:
+            y = []
+            yerr = []
+    
+            for alpha in alphas:
+                result = get_result(results, method, alpha=alpha)
 
-    plt.plot([min(target), 1.0], [min(target), 1.0], "--", color="black", label="Ideal")
+                y.append(result.coverage)
+                yerr.append(result.coverage_std)
+    
+            plt.errorbar(x, y, yerr=yerr if error_bars else None, fmt=marker, capsize=4, label=label)
+
+    plt.plot([min(x), 1.0], [min(x), 1.0], "--", color="black", label="Ideal")
 
     plt.xlabel(r"Target coverage $(1-\alpha)$")
     plt.ylabel("Empirical coverage")
@@ -26,23 +34,163 @@ def plot_coverage(coverage, alphas, error_bars=False):
     plt.savefig("figures/coverage_plot.pdf", bbox_inches="tight", transparent=True)
     plt.show()
 
-def plot_set_size(results, alphas):
-    target = [1-a for a in alphas]
-
-    (_, _, central_sizes) = results["central"]
-    (_, _, homo_sizes) = results["wfcp"]
-    (_, _, hetero_sizes) = results["hetero"]
+def plot_set_size_vs_coverage(results, alphas):
+    x = [1-a for a in alphas]
 
     plt.figure(figsize=(6,6))
 
-    plt.plot(target, central_sizes, marker="o", label="Centralized CP")
-    plt.plot(target, homo_sizes, marker="s", label="WFCP")
-    plt.plot(target, hetero_sizes, marker="^", label="Heterogeneous WFCP")
+    for method, marker, label in methods:
+        y = []
+
+        for alpha in alphas:
+            result = get_result(results, method, alpha=alpha)
+
+            y.append(result.set_size)
+
+        plt.errorbar(x, y, fmt=marker, capsize=4, label=label)
 
     plt.xlabel(r"Target coverage $(1-\alpha)$")
     plt.ylabel("Average prediction set size")
     plt.grid(True)
     plt.legend()
     plt.tight_layout
-    plt.savefig("figures/size_plot.pdf", bbox_inches="tight", transparent=True)
+    plt.savefig("figures/size_coverage_plot.pdf", bbox_inches="tight", transparent=True)
     plt.show()
+
+def plot_coverage_vs_dirichlet(results, dirichlet_alphas, target_alpha, error_bars=False):
+    x = dirichlet_alphas
+
+    plt.figure(figsize=(6,6))
+
+    for method, marker, label in methods:
+        y = []
+        yerr = []
+
+        for dir_alpha in dirichlet_alphas:
+            result = get_result(results, method, dir_alpha=dir_alpha)
+            if result.target_coverage != target_alpha:
+                raise ValueError("The target coverage does not match the target coverage of the experiments.")
+
+            y.append(result.coverage)
+            yerr.append(result.coverage_std)
+
+        plt.errorbar(x, y, yerr=yerr if error_bars else None, fmt=marker, capsize=4, label=label)
+
+    plt.axhline(y=1-target_alpha, linestyle="--", color="black", label="Ideal")
+
+    plt.xscale("log")
+    plt.xticks(
+        [0.05, 0.1, 0.5, 1, 10],
+        ["0.05", "0.1", "0.5", "1", "10"]
+    )
+    plt.gca().invert_xaxis()
+    plt.xlabel(r"Dirichlet $\alpha$")
+    plt.ylabel("Empirical coverage")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig("figures/coverage_dirichlet_plot.pdf", bbox_inches="tight", transparent=True)
+    plt.show()
+
+def plot_set_size_vs_dirichlet(results, dirichlet_alphas):
+    x = dirichlet_alphas
+    
+    plt.figure(figsize=(6,6))
+
+    for method, marker, label in methods:
+        y = []
+
+        for dir_alpha in dirichlet_alphas:
+            result = get_result(results, method, dir_alpha=dir_alpha)
+
+            y.append(result.set_size)
+
+        plt.errorbar(x, y, fmt=marker, capsize=4, label=label)
+
+    plt.xscale("log")
+    plt.xticks(
+        [0.05, 0.1, 0.5, 1, 10],
+        ["0.05", "0.1", "0.5", "1", "10"]
+    )
+    plt.gca().invert_xaxis()
+    plt.xlabel(r"Dirichlet $\alpha$")
+    plt.ylabel("Average prediction set size")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout
+    plt.savefig("figures/size_dirichlet_plot.pdf", bbox_inches="tight", transparent=True)
+    plt.show()
+
+def plot_coverage_vs_noise(results, noise_ratios, target_alpha, error_bars=False):
+    x = [1 / n for n in noise_ratios]
+
+    plt.figure(figsize=(6,6))
+
+    for method, marker, label in methods:
+        y = []
+        yerr = []
+
+        for noise_ratio in noise_ratios:
+            result = get_result(results, method, noise_ratio=noise_ratio)
+            if result.target_coverage != target_alpha:
+                raise ValueError("The target coverage does not match the target coverage of the experiments.")
+
+            y.append(result.coverage)
+            yerr.append(result.coverage_std)
+
+        plt.errorbar(x, y, yerr=yerr if error_bars else None, fmt=marker, capsize=4, label=label)
+
+    plt.axhline(y=1-target_alpha, linestyle="--", color="black", label="Ideal")
+
+    plt.xscale("log")
+    plt.xticks(
+        [0.01, 0.1, 1, 10, 100],
+        [r"$10^{-2}$", r"$10^{-1}$", r"$10^0$", r"$10^1$", r"$10^2$"]
+    )
+    plt.xlabel("SNR")
+    plt.ylabel("Empirical coverage")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig("figures/coverage_noise_plot.pdf", bbox_inches="tight", transparent=True)
+    plt.show()
+
+def plot_set_size_vs_noise(results, noise_ratios):
+    x = [1 / n for n in noise_ratios]
+    
+    plt.figure(figsize=(6,6))
+
+    for method, marker, label in methods:
+        y = []
+
+        for noise_ratio in noise_ratios:
+            result = get_result(results, method, noise_ratio=noise_ratio)
+
+            y.append(result.set_size)
+
+        plt.errorbar(x, y, fmt=marker, capsize=4, label=label)
+
+    plt.xscale("log")
+    plt.xticks(
+        [0.01, 0.1, 1, 10, 100],
+        [r"$10^{-2}$", r"$10^{-1}$", r"$10^0$", r"$10^1$", r"$10^2$"]
+    )
+    plt.xlabel("SNR")
+    plt.ylabel("Average prediction set size")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout
+    plt.savefig("figures/size_noise_plot.pdf", bbox_inches="tight", transparent=True)
+    plt.show()
+
+def get_result(results, method, alpha=None, dir_alpha=None, noise_ratio=None):
+    for r in results:
+        if (
+            r.method == method
+            and (alpha is None or r.target_coverage == alpha)
+            and (dir_alpha is None or r.dirichlet_alpha == dir_alpha)
+            and (noise_ratio is None or r.noise_ratio == noise_ratio)
+        ):
+            return r
+
+    raise ValueError("No matching experiment could be found.")

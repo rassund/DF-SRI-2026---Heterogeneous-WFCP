@@ -1,5 +1,5 @@
 import numpy as np
-from utils import cifar10_labels, split_data_homo, split_data_hetero, get_calib_and_val_data
+from utils import cifar10_labels, split_data_homo, split_data_hetero, get_calib_and_val_data, ExperimentConfig, ExperimentResult
 from methods import MethodInterface, CentralCP, WFCP, HETERO_WFCP
 
 # def marginal_coverage1(model, data, num_clients, mode, alpha, num_trials, num_calib_data, noise_ratio, num_bins):
@@ -116,30 +116,50 @@ from methods import MethodInterface, CentralCP, WFCP, HETERO_WFCP
 #     sizes = [len(S) for S in sets]
 #     print("Central server average set size:", np.mean(sizes))
 
-def coverage_and_set_size_experiment(config, alphas):
-    results = {
-        "central": [],
-        "wfcp": [],
-        "hetero": []
-    }
+def coverage_and_set_size_experiment(config: ExperimentConfig, alphas=None, dirichlet_alphas=None, noise_ratios=None):
+    if alphas is None:
+        alphas = [config.alpha]
+    if dirichlet_alphas is None:
+        dirichlet_alphas = [config.dirichlet_alpha]
+    if noise_ratios is None:
+        noise_ratios = [config.noise_ratio]
 
-    methods = {
-        "central": CentralCP(config.model),
-        "wfcp": WFCP(config.model, config.num_bins, config.num_clients, config.noise_ratio, config.gains, config.min_gain),
-        "hetero": HETERO_WFCP(config.model, config.num_bins, config.num_clients, config.noise_ratio, config.gains, config.min_gain)
-    }
+    results = []
 
-    for method in methods:
-        means, stds, avg_sizes = evaluate_method(methods[method], config.data, alphas, config.num_trials,
-                                        config.num_calib_data, config.num_valid_data, config.dirichlet_alpha,
-                                        1 if method == "central" else config.num_clients)
-        results[method].append(means)
-        results[method].append(stds)
-        results[method].append(avg_sizes)
+    for noise_ratio in noise_ratios:
+        methods = {
+            "central": CentralCP(config.model),
+            "wfcp": WFCP(config.model, config.num_bins, config.num_clients, noise_ratio, config.gains, config.min_gain),
+            "hetero": HETERO_WFCP(config.model, config.num_bins, config.num_clients, noise_ratio, config.gains, config.min_gain)
+        }
+
+        for name, method in methods.items():
+            for dir_alpha in dirichlet_alphas:
+                for alpha in alphas:
+                    mean, std, avg_size = evaluate_method(
+                        method,
+                        config.data,
+                        alpha,
+                        config.num_trials,
+                        config.num_calib_data,
+                        config.num_valid_data,
+                        dir_alpha if len(dirichlet_alphas) > 1 else "iid",
+                        1 if name == "central" else config.num_clients
+                    )
+                    
+                    results.append(ExperimentResult(
+                        method=name,
+                        target_coverage=alpha,
+                        dirichlet_alpha=dir_alpha,
+                        noise_ratio=noise_ratio,
+                        coverage=mean,
+                        coverage_std=std,
+                        set_size=avg_size
+                    ))
 
     return results
 
-def evaluate_method(method: MethodInterface, data, alphas, num_trials, num_calib_data, num_valid_data, dir_alpha, num_clients):
+def evaluate_method(method: MethodInterface, data, alpha, num_trials, num_calib_data, num_valid_data, dir_alpha, num_clients):
     """
     Evaluates the given method based on marginal coverage and average prediction set size.
     The evaluation is done over many trials with the result being the average of all trials.
@@ -151,8 +171,8 @@ def evaluate_method(method: MethodInterface, data, alphas, num_trials, num_calib
     data : list of (image, label)
         The test data to base the evaluation on.
         This is split into a calibration set and a validation set.
-    alphas : list of floats
-        The error rates to evaluate.
+    alpha : float
+        The target error rate.
     num_trials : int
         The number of trials to run and average over.
     num_calib_data : int
@@ -166,43 +186,41 @@ def evaluate_method(method: MethodInterface, data, alphas, num_trials, num_calib
     
     Returns
     -------
-    means : list
-        The mean coverages for each alpha value over all trials.
-    stds : list
+    mean : float
+        The mean coverage for the target alpha over all trials.
+    std : float
         The standard deviation of the coverages over all trials.
-    avg_sizes : list
-        The average prediction set sizes for each alpha value over all trials.
+    avg_size : float
+        The average prediction set sizes for the target alpha value over all trials.
     """
 
-    means = []
-    stds = []
-    avg_sizes = []
-
-    coverages = [[] for _ in alphas]
-    set_sizes = [[] for _ in alphas]
+    coverages = []
+    set_sizes = []
 
     for _ in range(num_trials):
         calib_data, val_data = get_calib_and_val_data(data, num_calib_data, num_valid_data)
         val_images = np.array([d[0] for d in val_data])
         val_labels = np.array([d[1] for d in val_data])
-        calib_data_split = split_data_hetero(data=calib_data, num_groups=num_clients, alpha=dir_alpha)
-        #calib_data_split = split_data_homo(data=calib_data, num_groups=num_clients)
+        
+        if dir_alpha == "iid":
+            calib_data_split = split_data_homo(data=calib_data, num_groups=num_clients)
+        else:
+            calib_data_split = split_data_hetero(data=calib_data, num_groups=num_clients, alpha=dir_alpha)
 
         method.calibrate(calib_data_split)
 
-        for i, alpha in enumerate(alphas):
-            prediction_sets = method.predict(alpha, val_images)
+        prediction_sets = method.predict(alpha, val_images)
 
-            coverage = marginal_coverage(prediction_sets, val_labels)
-            coverages[i].append(coverage)
+        coverage = marginal_coverage(prediction_sets, val_labels)
+        coverages.append(coverage)
 
-            set_sizes[i].append([len(s) for s in prediction_sets])
+        set_sizes.append([len(s) for s in prediction_sets])
 
-    means = [np.mean(c) for c in coverages]
-    stds = [np.std(c) for c in coverages]
-    avg_sizes = [np.mean(s) for s in set_sizes]
+    mean = np.mean(coverages)
+    std = np.std(coverages)
+    avg_size = np.mean(set_sizes)
 
-    return means, stds, avg_sizes
+    return mean, std, avg_size
 
 def marginal_coverage(pred_sets, val_labels):
     return np.mean([cifar10_labels[y[0]] in pred_set for y, pred_set in zip(val_labels, pred_sets)])

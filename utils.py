@@ -158,3 +158,14 @@ class ExperimentConfig:
 
     def generate_gains(self):
         self.gains = np.random.rayleigh(scale=np.sqrt(0.5), size=self.num_clients)
+
+
+@dataclass
+class ExperimentResult:
+    method: str
+    target_coverage: float
+    dirichlet_alpha: float
+    noise_ratio: float
+    coverage: float
+    coverage_std: float
+    set_size: float

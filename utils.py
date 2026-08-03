@@ -169,3 +169,4 @@ class ExperimentResult:
     coverage: float
     coverage_std: float
     set_size: float
+    size_std: float

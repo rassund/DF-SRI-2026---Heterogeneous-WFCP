@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-from utils import ExperimentResult
 
 methods = [
     ("central", "o-", "Centralized CP"),
@@ -63,6 +62,9 @@ def plot_coverage_vs_dirichlet(results, dirichlet_alphas, target_alpha, error_ba
     plt.figure(figsize=(6,6))
 
     for method, marker, label in methods:
+        if method == "central":
+            continue
+
         y = []
         yerr = []
 
@@ -80,8 +82,8 @@ def plot_coverage_vs_dirichlet(results, dirichlet_alphas, target_alpha, error_ba
 
     plt.xscale("log")
     plt.xticks(
-        [0.05, 0.1, 0.5, 1, 10],
-        ["0.05", "0.1", "0.5", "1", "10"]
+        [0.05, 0.1, 0.5, 1, 10, 100],
+        ["0.05", "0.1", "0.5", "1", "10", "IID"]
     )
     plt.gca().invert_xaxis()
     plt.xlabel(r"Dirichlet $\alpha$")
@@ -92,25 +94,30 @@ def plot_coverage_vs_dirichlet(results, dirichlet_alphas, target_alpha, error_ba
     plt.savefig("figures/coverage_dirichlet_plot.pdf", bbox_inches="tight", transparent=True)
     plt.show()
 
-def plot_set_size_vs_dirichlet(results, dirichlet_alphas):
+def plot_set_size_vs_dirichlet(results, dirichlet_alphas, error_bars=False):
     x = dirichlet_alphas
     
     plt.figure(figsize=(6,6))
 
     for method, marker, label in methods:
+        if method == "central":
+            continue
+
         y = []
+        yerr = []
 
         for dir_alpha in dirichlet_alphas:
             result = get_result(results, method, dir_alpha=dir_alpha)
 
             y.append(result.set_size)
+            yerr.append(result.size_std)
 
-        plt.errorbar(x, y, fmt=marker, capsize=4, label=label)
+        plt.errorbar(x, y, yerr=yerr if error_bars else None, fmt=marker, capsize=4, label=label)
 
     plt.xscale("log")
     plt.xticks(
-        [0.05, 0.1, 0.5, 1, 10],
-        ["0.05", "0.1", "0.5", "1", "10"]
+        [0.05, 0.1, 0.5, 1, 10, 100],
+        ["0.05", "0.1", "0.5", "1", "10", "IID"]
     )
     plt.gca().invert_xaxis()
     plt.xlabel(r"Dirichlet $\alpha$")
@@ -127,6 +134,9 @@ def plot_coverage_vs_noise(results, noise_ratios, target_alpha, error_bars=False
     plt.figure(figsize=(6,6))
 
     for method, marker, label in methods:
+        if method == "central":
+            continue
+
         y = []
         yerr = []
 
@@ -161,6 +171,9 @@ def plot_set_size_vs_noise(results, noise_ratios):
     plt.figure(figsize=(6,6))
 
     for method, marker, label in methods:
+        if method == "central":
+            continue
+        
         y = []
 
         for noise_ratio in noise_ratios:

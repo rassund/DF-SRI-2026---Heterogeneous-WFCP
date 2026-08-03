@@ -18,23 +18,22 @@ n_0 = [
 ]
 
 # Defines the level of heterogeneity. Lower = more hetero, higher = less hetero.
-dirichlet_alphas = [10, 1, 0.5, 0.1, 0.05]
+dirichlet_alphas = [100, 10, 1, 0.5, 0.1, 0.05]
 
 alphas = [0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.18, 0.20]
-#alphas = [0.05, 0.1, 0.2]
 
 config = ExperimentConfig(
     data=data,
     model=model,
     num_trials=20,
     num_clients=20,
-    num_bins=60,
-    num_calib_data=1000,
-    num_valid_data=9000,
+    num_bins=20,
+    num_calib_data=400,
+    num_valid_data=400,
     min_gain=1.0,
     noise_ratio=1.0,
-    dirichlet_alpha=10,
-    alpha=0.1
+    dirichlet_alpha=100,
+    alpha=0.2
 )
 config.generate_gains()
 
@@ -42,11 +41,11 @@ results_alphas = coverage_and_set_size_experiment(config, alphas=alphas)
 plt.plot_coverage(results_alphas, alphas)
 plt.plot_set_size_vs_coverage(results_alphas, alphas)
 
-results_heterogeneity = coverage_and_set_size_experiment(config, dirichlet_alphas=dirichlet_alphas)
-plt.plot_coverage_vs_dirichlet(results_heterogeneity, dirichlet_alphas, config.alpha)
-plt.plot_set_size_vs_dirichlet(results_heterogeneity, dirichlet_alphas)
+#results_heterogeneity = coverage_and_set_size_experiment(config, dirichlet_alphas=dirichlet_alphas)
+#plt.plot_coverage_vs_dirichlet(results_heterogeneity, dirichlet_alphas, config.alpha, error_bars=True)
+#plt.plot_set_size_vs_dirichlet(results_heterogeneity, dirichlet_alphas, error_bars=True)
 
-results_noise = coverage_and_set_size_experiment(config, noise_ratios=n_0)
-plt.plot_coverage_vs_noise(results_noise, n_0, config.alpha)
-plt.plot_set_size_vs_noise(results_noise, n_0)
+#results_noise = coverage_and_set_size_experiment(config, noise_ratios=n_0)
+#plt.plot_coverage_vs_noise(results_noise, n_0, config.alpha)
+#plt.plot_set_size_vs_noise(results_noise, n_0)
 # %%

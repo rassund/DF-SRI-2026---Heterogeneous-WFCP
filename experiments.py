@@ -1,6 +1,6 @@
 import numpy as np
 from utils import cifar10_labels, split_data_homo, split_data_hetero, get_calib_and_val_data, ExperimentConfig, ExperimentResult
-from methods import MethodInterface, CentralCP, WFCP, HETERO_WFCP
+from methods import CentralCP, WFCP, HETERO_WFCP
 
 # def marginal_coverage1(model, data, num_clients, mode, alpha, num_trials, num_calib_data, noise_ratio, num_bins):
 #     """
@@ -117,8 +117,11 @@ from methods import MethodInterface, CentralCP, WFCP, HETERO_WFCP
 #     print("Central server average set size:", np.mean(sizes))
 
 def coverage_and_set_size_experiment(config: ExperimentConfig, alphas=None, dirichlet_alphas=None, noise_ratios=None):
+    skip_central = False
+
     if alphas is None:
         alphas = [config.alpha]
+        skip_central = True
     if dirichlet_alphas is None:
         dirichlet_alphas = [config.dirichlet_alpha]
     if noise_ratios is None:
@@ -128,22 +131,25 @@ def coverage_and_set_size_experiment(config: ExperimentConfig, alphas=None, diri
 
     for noise_ratio in noise_ratios:
         methods = {
-            "central": CentralCP(config.model),
-            "wfcp": WFCP(config.model, config.num_bins, config.num_clients, noise_ratio, config.gains, config.min_gain),
-            "hetero": HETERO_WFCP(config.model, config.num_bins, config.num_clients, noise_ratio, config.gains, config.min_gain)
+            "central": lambda: CentralCP(config.model),
+            "wfcp": lambda: WFCP(config.model, config.num_bins, config.num_clients, noise_ratio, config.gains, config.min_gain),
+            "hetero": lambda: HETERO_WFCP(config.model, config.num_bins, config.num_clients, noise_ratio, config.gains, config.min_gain)
         }
 
         for name, method in methods.items():
+            if name == "central" and skip_central:
+                continue
+            
             for dir_alpha in dirichlet_alphas:
                 for alpha in alphas:
-                    mean, std, avg_size = evaluate_method(
+                    mean, std, avg_size, size_std = evaluate_method(
                         method,
                         config.data,
                         alpha,
                         config.num_trials,
                         config.num_calib_data,
                         config.num_valid_data,
-                        dir_alpha if len(dirichlet_alphas) > 1 else "iid",
+                        dir_alpha,
                         1 if name == "central" else config.num_clients
                     )
                     
@@ -154,12 +160,13 @@ def coverage_and_set_size_experiment(config: ExperimentConfig, alphas=None, diri
                         noise_ratio=noise_ratio,
                         coverage=mean,
                         coverage_std=std,
-                        set_size=avg_size
+                        set_size=avg_size,
+                        size_std=size_std
                     ))
 
     return results
 
-def evaluate_method(method: MethodInterface, data, alpha, num_trials, num_calib_data, num_valid_data, dir_alpha, num_clients):
+def evaluate_method(method_func, data, alpha, num_trials, num_calib_data, num_valid_data, dir_alpha, num_clients):
     """
     Evaluates the given method based on marginal coverage and average prediction set size.
     The evaluation is done over many trials with the result being the average of all trials.
@@ -198,11 +205,12 @@ def evaluate_method(method: MethodInterface, data, alpha, num_trials, num_calib_
     set_sizes = []
 
     for _ in range(num_trials):
+        method = method_func()
         calib_data, val_data = get_calib_and_val_data(data, num_calib_data, num_valid_data)
         val_images = np.array([d[0] for d in val_data])
         val_labels = np.array([d[1] for d in val_data])
         
-        if dir_alpha == "iid":
+        if dir_alpha > 10:
             calib_data_split = split_data_homo(data=calib_data, num_groups=num_clients)
         else:
             calib_data_split = split_data_hetero(data=calib_data, num_groups=num_clients, alpha=dir_alpha)
@@ -219,8 +227,9 @@ def evaluate_method(method: MethodInterface, data, alpha, num_trials, num_calib_
     mean = np.mean(coverages)
     std = np.std(coverages)
     avg_size = np.mean(set_sizes)
+    size_std = np.std(set_sizes)
 
-    return mean, std, avg_size
+    return mean, std, avg_size, size_std
 
 def marginal_coverage(pred_sets, val_labels):
     return np.mean([cifar10_labels[y[0]] in pred_set for y, pred_set in zip(val_labels, pred_sets)])

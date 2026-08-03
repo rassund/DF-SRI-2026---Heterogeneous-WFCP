@@ -2,6 +2,7 @@
 import tensorflow as tf
 from experiments import coverage_and_set_size_experiment
 import plotting as plt
+from plotting import plot_metric
 from utils import ExperimentConfig
 
 model_path = "cnn_model_cifar10.keras"
@@ -25,10 +26,10 @@ alphas = [0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.18, 0.20]
 config = ExperimentConfig(
     data=data,
     model=model,
-    num_trials=20,
+    num_trials=10,
     num_clients=20,
     num_bins=20,
-    num_calib_data=400,
+    num_calib_data=4000,
     num_valid_data=400,
     min_gain=1.0,
     noise_ratio=1.0,
@@ -38,14 +39,14 @@ config = ExperimentConfig(
 config.generate_gains()
 
 results_alphas = coverage_and_set_size_experiment(config, alphas=alphas)
-plt.plot_coverage(results_alphas, alphas)
-plt.plot_set_size_vs_coverage(results_alphas, alphas)
+plot_metric("coverage_vs_alpha", results_alphas, alphas, config, error_bars=True)
+plot_metric("size_vs_alpha", results_alphas, alphas, config, error_bars=True)
 
-#results_heterogeneity = coverage_and_set_size_experiment(config, dirichlet_alphas=dirichlet_alphas)
-#plt.plot_coverage_vs_dirichlet(results_heterogeneity, dirichlet_alphas, config.alpha, error_bars=True)
-#plt.plot_set_size_vs_dirichlet(results_heterogeneity, dirichlet_alphas, error_bars=True)
+results_heterogeneity = coverage_and_set_size_experiment(config, dirichlet_alphas=dirichlet_alphas)
+plot_metric("coverage_vs_dirichlet", results_heterogeneity, dirichlet_alphas, config, error_bars=True, target_alpha=config.alpha)
+plot_metric("size_vs_dirichlet", results_heterogeneity, dirichlet_alphas, config, error_bars=True)
 
-#results_noise = coverage_and_set_size_experiment(config, noise_ratios=n_0)
-#plt.plot_coverage_vs_noise(results_noise, n_0, config.alpha)
-#plt.plot_set_size_vs_noise(results_noise, n_0)
+results_noise = coverage_and_set_size_experiment(config, noise_ratios=n_0)
+plot_metric("coverage_vs_noise", results_noise, n_0, config, error_bars=True, target_alpha=config.alpha)
+plot_metric("size_vs_noise", results_noise, n_0, config, error_bars=True)
 # %%

@@ -5,7 +5,7 @@ This project investigates the performance of Wireless Federated Conformal Predic
 (non-IID) client data distributions. WFCP, introduced by (REF), is a distributed uncertainty quantification protocol
 that enables multiple clients to collaboratively calibrate prediction sets while communicating over noisy wireless
 channels. While the original protocol assumes that calibration data is homogeneously (IID) distributed across clients,
-the authors propose a way to adapt the protocol to heterogeneous data distributions using the results of (REF).
+the authors propose a way to adapt the protocol to heterogeneous data distributions using the results of Lu et al. (2023).
 
 The purpose of this project is to implement and evaluate the proposed heterogeneous extension of the protocol.
 All experiments are performed using a CNN model trained on the CIFAR-10 image classification dataset.
@@ -15,7 +15,13 @@ This project was developed as my project for the Digital Future's Summer Researc
 ## Background
 
 ### Conformal Prediction
-Conformal Prediction (CP) is a framework for uncertainty quantification
+Conformal Prediction (CP) is a distribution-free statistical framework for uncertainty quantification
+that can be wrapped around any predictive model to output prediction sets with formal coverage guarantees (Angelopoulos & Bates, 2023).
+Rather than producing a single predicted label, CP generates a set that is guaranteed to contain the correct
+label with a user-specified probability, known as the target coverage. These guarantees hold regardless
+of the data distribution or underlying machine learning model. However, the guarantees rely on the
+exchangeability of calibration data and test data. This exchangeability cannot be guaranteed in
+a federated learning setting.
 
 ### Wireless Federated Conformal Prediction
 WFCP (REF) extends CP to a federated inference setting in which multiple clients each
@@ -47,6 +53,7 @@ and Channel. These components are then used in the Methods layer to implement th
 the Experiments layer evaluates these methods by varying different parameters, including target coverage, degree of calibration
 data heterogeneity, and signal-to-noise ratio.
 
+```
 ┌──────────────────────────┐
 │       Experiments        │
 │--------------------------│
@@ -70,6 +77,7 @@ data heterogeneity, and signal-to-noise ratio.
 │ Server                   │
 │ Channel                  │
 └──────────────────────────┘
+```
 
 ## Results
 The heterogeneous extension of WFCP was evaluated on the CIFAR-10 dataset by comparing its empirical coverage and prediction
@@ -92,10 +100,10 @@ how well the original WFCP method performs even under heterogenous data. Empiric
 coverage levels, while still producing smaller sets than heterogeneous WFCP.
 
 <p align="center">
-    <img src="figures/coverage_plot.pdf" alt="Coverage under heterogeneous data" width="700">
+    <img src="figures/coverage_plot.png" width="700">
 </p>
 <p align="center">
-    <img src="figures/size_coverage_plot.pdf" alt="Set size under heterogeneous data" width="700">
+    <img src="figures/size_coverage_plot.png" width="700">
 </p>
 
 ### Effect of various degrees of heterogeneity
@@ -108,10 +116,10 @@ data. Heterogeneous WFCP on the other hand becomes clearly more conservative as 
 at maximum set size.
 
 <p align="center">
-    <img src="figures/coverage_dirichlet_plot.pdf" alt="Coverage under heterogeneous data" width="700">
+    <img src="figures/coverage_dirichlet_plot.png" width="700">
 </p>
 <p align="center">
-    <img src="figures/size_dirichlet_plot.pdf" alt="Coverage under heterogeneous data" width="700">
+    <img src="figures/size_dirichlet_plot.png" width="700">
 </p>
 
 ### Effect of channel noise under heterogeneous data
@@ -122,10 +130,10 @@ The results demonstrates that heterogeneous WFCP retains the robustness of the o
 is maintained even when data is sent over a noisy channel.
 
 <p align="center">
-    <img src="figures/coverage_noise_plot.pdf" alt="Coverage under heterogeneous data" width="700">
+    <img src="figures/coverage_noise_plot.png" width="700">
 </p>
 <p align="center">
-    <img src="figures/size_noise_plot.pdf" alt="Coverage under heterogeneous data" width="700">
+    <img src="figures/size_noise_plot.png" width="700">
 </p>
 
 ### Conclusions
@@ -143,9 +151,37 @@ achieve empirical coverage due to being more conservative as the degree of heter
 ## How To Use
 
 ### Libraries
+Matplotlib, version 3.11.0
+
+NumPy, version 2.5.0
+
+Tensorflow, version 2.21.0
 
 ### Running Experiments
+All experiments are executed through the `main.py` module. Experimental parameters, such as the target coverage, degree of heterogeneity,
+signal-to-noise ratio, and number of trials, can be configured directly in the script before execution. Note that the number of trials will
+greatly determine the runtime of the experiments.
+
+Generated figures are automatically saved to the `figures/` directory.
 
 ### Running Tests
+Unit tests are included in the `tests/` directory. All tests can be run with
+```
+python -m unittest discover -s tests
+```
 
 ## References
+Angelopoulos, A. N., & Bates, S. (2023). Conformal Prediction: A Gentle Introduction.
+Foundations and Trends in Machine Learning, 16(4), 494–591.
+https://doi.org/10.1561/2200000101
+
+Lu, C., Yu, Y., Karimireddy, S. P., Jordan, M., & Raskar, R. (2023). Federated Conformal
+Predictors for Distributed Uncertainty Quantification. Proceedings of the 40th
+International Conference on Machine Learning, in Proceedings of Machine Learning
+Research 202:22942-22964 Available from
+https://proceedings.mlr.press/v202/lu23i.html
+
+M. Zhu, M. Zecchin, S. Park, C. Guo, C. Feng & O. Simeone. (2024). Federated Inference
+Quantification Over Wireless Channels via Conformal Prediction. IEEE Transactions on
+Signal Processing, vol. 72, pp. 1235-1250.
+https://doi.org/10.1109/TSP.2024.3358615

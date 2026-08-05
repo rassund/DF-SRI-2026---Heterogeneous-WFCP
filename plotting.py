@@ -18,7 +18,7 @@ PLOT_CONFIGS = {
         xlabel=r"Target coverage $(1-\alpha)$",
         ylabel="Empirical coverage",
         ideal="diagonal",
-        filename="figures/coverage_plot.pdf",
+        filename="figures/coverage_plot",
     ),
     "size_vs_alpha": dict(
         x_key="alpha",
@@ -31,7 +31,7 @@ PLOT_CONFIGS = {
         xlabel=r"Target coverage $(1-\alpha)$",
         ylabel="Average prediction set size",
         ideal=None,
-        filename="figures/size_coverage_plot.pdf",
+        filename="figures/size_coverage_plot",
     ),
     "coverage_vs_dirichlet": dict(
         x_key="dir_alpha",
@@ -44,7 +44,7 @@ PLOT_CONFIGS = {
         xlabel=r"Dirichlet $\alpha$",
         ylabel="Empirical coverage",
         ideal=("h", None),
-        filename="figures/coverage_dirichlet_plot.pdf",
+        filename="figures/coverage_dirichlet_plot",
     ),
     "size_vs_dirichlet": dict(
         x_key="dir_alpha",
@@ -57,7 +57,7 @@ PLOT_CONFIGS = {
         xlabel=r"Dirichlet $\alpha$",
         ylabel="Average prediction set size",
         ideal=None,
-        filename="figures/size_dirichlet_plot.pdf",
+        filename="figures/size_dirichlet_plot",
     ),
     "coverage_vs_noise": dict(
         x_key="noise_ratio",
@@ -70,7 +70,7 @@ PLOT_CONFIGS = {
         xlabel="SNR",
         ylabel="Empirical coverage",
         ideal=("h", None),
-        filename="figures/coverage_noise_plot.pdf",
+        filename="figures/coverage_noise_plot",
     ),
     "size_vs_noise": dict(
         x_key="noise_ratio",
@@ -83,7 +83,7 @@ PLOT_CONFIGS = {
         xlabel="SNR",
         ylabel="Average prediction set size",
         ideal=None,
-        filename="figures/size_noise_plot.pdf",
+        filename="figures/size_noise_plot",
     ),
 }
 
@@ -171,5 +171,6 @@ def plot_metric(plot_type, results, x_values, config, error_bars=False, target_a
     if show_config:
         _add_config_caption(config, CONFIG_EXCLUDE_FIELDS | {cfg["config_x_attr"]})
 
-    plt.savefig(cfg["filename"], bbox_inches="tight", transparent=True)
+    plt.savefig(f"{cfg["filename"]}.pdf", bbox_inches="tight", transparent=True)
+    plt.savefig(f"{cfg["filename"]}.png", dpi=300, bbox_inches="tight", transparent=True)
     plt.show()

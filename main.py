@@ -2,14 +2,9 @@
 import tensorflow as tf
 from experiments import coverage_and_set_size_experiment
 from plotting import plot_metric
-from utils import ExperimentConfig
+from utils import ExperimentConfig, load_model_and_data
 
-model_path = "cnn_model_cifar10.keras"
-
-model = tf.keras.models.load_model(model_path)
-(_, _), (test_images, test_labels) = tf.keras.datasets.cifar10.load_data()
-test_images = test_images.astype("float32") / 255.0
-data = list(zip(test_images, test_labels))
+model, data = load_model_and_data(model_path="cnn_model_cifar10.keras")
 
 # The SNR ranges from -20dB to 20dB. SNR = 10 * log_10(1.0 / n_0).
 n_0 = [
@@ -32,7 +27,7 @@ config = ExperimentConfig(
     num_valid_data=400,
     min_gain=1.0,
     noise_ratio=1.0,
-    dirichlet_alpha=1,
+    dirichlet_alpha=5.0,
     alpha=0.2
 )
 config.generate_gains()
@@ -41,11 +36,11 @@ results_alphas = coverage_and_set_size_experiment(config, alphas=alphas)
 plot_metric("coverage_vs_alpha", results_alphas, alphas, config, error_bars=True)
 plot_metric("size_vs_alpha", results_alphas, alphas, config, error_bars=True)
 
-# results_heterogeneity = coverage_and_set_size_experiment(config, dirichlet_alphas=dirichlet_alphas)
-# plot_metric("coverage_vs_dirichlet", results_heterogeneity, dirichlet_alphas, config, error_bars=True, target_alpha=config.alpha)
-# plot_metric("size_vs_dirichlet", results_heterogeneity, dirichlet_alphas, config, error_bars=True)
+results_heterogeneity = coverage_and_set_size_experiment(config, dirichlet_alphas=dirichlet_alphas)
+plot_metric("coverage_vs_dirichlet", results_heterogeneity, dirichlet_alphas, config, error_bars=True, target_alpha=config.alpha)
+plot_metric("size_vs_dirichlet", results_heterogeneity, dirichlet_alphas, config, error_bars=True)
 
-# results_noise = coverage_and_set_size_experiment(config, noise_ratios=n_0)
-# plot_metric("coverage_vs_noise", results_noise, n_0, config, error_bars=True, target_alpha=config.alpha)
-# plot_metric("size_vs_noise", results_noise, n_0, config, error_bars=True)
+results_noise = coverage_and_set_size_experiment(config, noise_ratios=n_0)
+plot_metric("coverage_vs_noise", results_noise, n_0, config, error_bars=True, target_alpha=config.alpha)
+plot_metric("size_vs_noise", results_noise, n_0, config, error_bars=True)
 # %%

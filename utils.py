@@ -1,5 +1,6 @@
 import random
 import numpy as np
+import tensorflow as tf
 from collections import defaultdict
 from enum import Enum
 from dataclasses import dataclass
@@ -133,6 +134,14 @@ def get_calib_and_val_data(data, num_calib_data, num_valid_data):
     d = random.sample(data, len(data))
     calib_data, val_data = (d[:num_calib_data], d[num_calib_data:num_calib_data + num_valid_data])
     return calib_data, val_data
+
+def load_model_and_data(model_path):
+    model = tf.keras.models.load_model(model_path)
+    (_, _), (test_images, test_labels) = tf.keras.datasets.cifar10.load_data()
+    test_images = test_images.astype("float32") / 255.0
+    data = list(zip(test_images, test_labels))
+
+    return model, data
 
 
 class Modes(Enum):

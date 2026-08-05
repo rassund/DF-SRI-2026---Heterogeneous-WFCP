@@ -162,7 +162,7 @@ def plot_metric(plot_type, results, x_values, config, error_bars=False, target_a
         plt.errorbar(x, y, yerr=use_yerr, fmt=marker, capsize=4, label=label)
 
     if cfg["ideal"] == "diagonal":
-        plt.plot([min(x), 1.0], [min(x), 1.0], "--", color="black", label="Ideal")
+        plt.plot([min(x), max(x)], [min(x), max(x)], "--", color="black", label="Ideal")
     elif isinstance(cfg["ideal"], tuple) and cfg["ideal"][0] == "h":
         plt.axhline(y=1 - target_alpha, linestyle="--", color="black", label="Ideal")
 

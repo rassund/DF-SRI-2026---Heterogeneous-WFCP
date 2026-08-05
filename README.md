@@ -2,7 +2,7 @@
 
 ## Overview
 This project investigates the performance of Wireless Federated Conformal Prediction (WFCP) under heterogeneous
-(non-IID) client data distributions. WFCP, introduced by (REF), is a distributed uncertainty quantification protocol
+(non-IID) client data distributions. WFCP, introduced by Zhu et al. (2024), is a distributed uncertainty quantification protocol
 that enables multiple clients to collaboratively calibrate prediction sets while communicating over noisy wireless
 channels. While the original protocol assumes that calibration data is homogeneously (IID) distributed across clients,
 the authors propose a way to adapt the protocol to heterogeneous data distributions using the results of Lu et al. (2023).
@@ -10,7 +10,7 @@ the authors propose a way to adapt the protocol to heterogeneous data distributi
 The purpose of this project is to implement and evaluate the proposed heterogeneous extension of the protocol.
 All experiments are performed using a CNN model trained on the CIFAR-10 image classification dataset.
 
-This project was developed as my project for the Digital Future's Summer Research Internship 2026 (REF).
+This project was developed as my project for the Digital Future's Summer Research Internship 2026.
 
 ## Background
 
@@ -24,17 +24,17 @@ exchangeability of calibration data and test data. This exchangeability cannot b
 a federated learning setting.
 
 ### Wireless Federated Conformal Prediction
-WFCP (REF) extends CP to a federated inference setting in which multiple clients each
+WFCP (Zhu et al., 2024) extends CP to a federated inference setting in which multiple clients each
 possess local calibration data while communicating with a central server over a noisy wireless channel.
 Instead of transmitting raw data, clients communicate compressed statistical information that allows
 the server to estimate a global conformal threshold. The protocol provides mechanisms to compensate
 for channel noise while preserving the formal coverage guarantees of CP.
 
 ### My Contribution
-The WFCP protocol as defined by (REF) assumes that calibration data is distributed identically across
-all clients. (REF) proposes a theoretical way to adapt the protocol to scenarios where clients
+The WFCP protocol as defined by Zhu et al. (2024) assumes that calibration data is distributed identically across
+all clients. Zhu et al. proposes a theoretical way to adapt the protocol to scenarios where clients
 receive data from different underlying distributions. This project implements the extension
-proposed by (REF) and investigates the impact of heterogeneous client data on the performance
+proposed by Zhu et al. and investigates the impact of heterogeneous client data on the performance
 of both the original and the extended WFCP. A procedure based on the Dirichlet distribution was
 impemented to generate verying degrees of non-IID datasets.
 
@@ -142,7 +142,7 @@ question of whether the heterogeneous extension is even necessary. The extension
 tested coverage levels and degrees of heterogeneity, making it seem a worse choise than homogeneous WFCP in all tested cases.
 
 It is worth noting that these experiments include some limiting factors, the biggest two of which are a limited number of trials
-and only a single dataset. All experiments run for at most 40 trials, which is small compared to the 400 trials run by (REF). Running
+and only a single dataset. All experiments run for at most 40 trials, which is small compared to the 400 trials run by Zhu et al. (2024). Running
 more trials would surely produce a more accurate result. The other limiting factor is that this study has focused only the CIFAR-10 image
 classication dataset. It is possible that other datasets, or other underlying predictive models, may produce different results. In a scenario
 where the original WFCP fails to achieve empirical coverage under heterogeneous data, these results indicate that heterogeneous WFCP may still

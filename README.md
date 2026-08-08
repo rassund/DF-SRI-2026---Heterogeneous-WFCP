@@ -181,7 +181,7 @@ International Conference on Machine Learning, in Proceedings of Machine Learning
 Research 202:22942-22964 Available from
 https://proceedings.mlr.press/v202/lu23i.html
 
-M. Zhu, M. Zecchin, S. Park, C. Guo, C. Feng & O. Simeone. (2024). Federated Inference
-Quantification Over Wireless Channels via Conformal Prediction. IEEE Transactions on
+M. Zhu, M. Zecchin, S. Park, C. Guo, C. Feng & O. Simeone. (2024). Federated Inference With Reliable
+Uncertainty Quantification Over Wireless Channels via Conformal Prediction. IEEE Transactions on
 Signal Processing, vol. 72, pp. 1235-1250.
 https://doi.org/10.1109/TSP.2024.3358615

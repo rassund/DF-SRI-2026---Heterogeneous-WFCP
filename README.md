@@ -53,31 +53,9 @@ and Channel. These components are then used in the Methods layer to implement th
 the Experiments layer evaluates these methods by varying different parameters, including target coverage, degree of calibration
 data heterogeneity, and signal-to-noise ratio.
 
-```
-┌──────────────────────────┐
-│       Experiments        │
-│--------------------------│
-│ Target Coverage          │
-│ Degree of heterogeneity  │
-│ Signal-to-Noise Ratio    │
-└────────────▲─────────────┘
-             │
-┌────────────┴─────────────┐
-│         Methods          │
-│--------------------------│
-│ Centralized CP           │
-│ WFCP                     │
-│ Heterogeneous WFCP       │
-└────────────▲─────────────┘
-             │
-┌────────────┴─────────────┐
-│          Actors          │
-│--------------------------│
-│ Client                   │
-│ Server                   │
-│ Channel                  │
-└──────────────────────────┘
-```
+<p align="center">
+    <img src="figures/proj_structure.png">
+</p>
 
 ## Results
 The heterogeneous extension of WFCP was evaluated on the CIFAR-10 dataset by comparing its empirical coverage and prediction
